@@ -20,11 +20,18 @@ function makePoint(x, y, col)
 end
 
 function destroyPoint(x,y)
-   for p in all(data) do	
-	  if p.x==x and p.y==y then
+   for p in all(data) do
+     dist = sqrt((p.x - x)^2 + (p.y - y)^2)
+	  if dist < 5 then
 		 p.s = 0
 	  end
    end
+end
+
+function recreateEveryPoint()
+   for p in all(data) do	
+		p.s = 1
+	end
 end
 
 
@@ -53,7 +60,7 @@ function drawPoint(p)
    if p.s==1 then
 	  pset(p.x, p.y, p.c)
    else
-	  pset(p.x, p.y, 2)
+	  pset(p.x, p.y, 0)
    end
 
 end
@@ -97,6 +104,10 @@ function mouseLeft()
 	destroyPoint(mx, my)
 end
 
+function mouseRight()
+   recreateEveryPoint()
+end
+
 function _update()
 	mx = stat(32)
 	my = stat(33)
@@ -106,7 +117,9 @@ function _update()
 		mb = stat(34)
 		if mb==1 then
 		   mouseLeft()
-		end
+		elseif mb==2 then
+         mouseRight()
+      end
 	end
 	mb = stat(34)
 
