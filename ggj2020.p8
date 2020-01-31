@@ -57,11 +57,6 @@ function getStruct()
    return struct
 end
 
-function updatePoint(p)
-
-end
-
-
 function drawPoint(p)
    if p.s==1 then
 	  pset(p.x, p.y, p.c)
@@ -102,6 +97,33 @@ function printData()
    end
 end
 
+function createStars()
+   s = {}
+   for i = 0,50 do
+      add(s, {x = rnd(127), y = rnd(127), l = flr(rnd(3))})
+   end
+   return s
+end
+
+function drawStars()
+   for s in all(stars) do
+      pset(s.x, s.y, 7)
+   end
+end
+
+function animateStars()
+   for s in all(stars) do
+      if (s.l == 0) then s.x -= 1
+      elseif (s.l == 1) then s.x -= 2
+      elseif (s.l == 2) then s.x -= 3 end
+
+      if (s.x < 0) then
+         s.x = 129
+         s.l = flr(rnd(3))
+      end
+   end
+end
+
 
 
 --------------------------------
@@ -119,6 +141,7 @@ function _init()
 	pset(127,0,8)
 
    particles = {}
+   stars = createStars()
 end
 
 
@@ -145,11 +168,10 @@ function _update()
 	end
 	mb = stat(34)
 
-
-   foreach(data, updatePoint)
    t += 1
 
    animateParticles()
+   animateStars()
 end
 
 
@@ -158,6 +180,7 @@ end
 
 function _draw()
    cls()
+   drawStars()
    drawStruct()
    drawParticles()
    pset(mx, my, 8)
