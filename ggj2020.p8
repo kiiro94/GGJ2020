@@ -20,7 +20,11 @@ function makePoint(x, y, col)
 end
 
 function destroyPoint(x,y)
-	
+   for p in all(data) do	
+	  if p.x==x and p.y==y then
+		 p.s = 0
+	  end
+   end
 end
 
 
@@ -39,9 +43,18 @@ function getStruct()
    return struct
 end
 
+function updatePoint(p)
+
+end
+
 
 function drawPoint(p)
-   pset(p.x, p.y, p.c)
+   if p.s==1 then
+	  pset(p.x, p.y, p.c)
+   else
+	  pset(p.x, p.y, 2)
+   end
+
 end
 
 function drawStruct()
@@ -69,14 +82,35 @@ end
 
 
 function _init()
+    poke(0x5F2D, 1)
+	mx = stat(32)
+	my = stat(33)
+	mb = stat(34)
 	data = getStruct()
 	t = 0
 	pset(127,0,8)
 end
 
 
+function mouseLeft()
+	destroyPoint(mx, my)
+end
 
 function _update()
+	mx = stat(32)
+	my = stat(33)
+
+
+	if mb==0 then
+		mb = stat(34)
+		if mb==1 then
+		   mouseLeft()
+		end
+	end
+	mb = stat(34)
+
+
+   foreach(data, updatePoint)
    t += 0.01
 end
 
@@ -88,12 +122,15 @@ function _draw()
    cls()
    drawStruct()
 
-   circ(64+sin(t)*8, 64, 2, 6)
+   pset(mx, my, 8)
 
    print("Mem :"..stat(0), 0,  0, 8)
    print("Cpu1:"..stat(1), 0,  8, 8)
    print("Cpu2:"..stat(2), 0, 16, 8)
    print("Fps :"..stat(7), 0, 24, 8)
+   print("mx: " .. mx, 0, 32, 8)
+   print("my: " .. my, 0, 40, 8)
+   print("mb: " .. mb, 0, 48, 8)
 end
 
 
