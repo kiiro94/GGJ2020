@@ -99,7 +99,7 @@ end
 
 function createStars()
    s = {}
-   for i = 0,50 do
+   for i = 0,25 do
       add(s, {x = rnd(127), y = rnd(127), l = flr(rnd(3))})
    end
    return s
@@ -115,7 +115,7 @@ function animateStars()
    for s in all(stars) do
       if (s.l == 0) then s.x -= 1
       elseif (s.l == 1) then s.x -= 2
-      elseif (s.l == 2) then s.x -= 3 end
+      elseif (s.l == 2) then s.x -= 4 end
 
       if (s.x < 0) then
          s.x = 129
