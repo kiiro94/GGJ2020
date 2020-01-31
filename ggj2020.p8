@@ -184,13 +184,15 @@ function _draw()
    drawStruct()
    drawParticles()
    pset(mx, my, 8)
-   print("Mem :"..stat(0), 0,  0, 8)
-   print("Cpu1:"..stat(1), 0,  8, 8)
-   print("Cpu2:"..stat(2), 0, 16, 8)
-   print("Fps :"..stat(7), 0, 24, 8)
-   print("mx: " .. mx, 0, 32, 8)
-   print("my: " .. my, 0, 40, 8)
-   print("mb: " .. mb, 0, 48, 8)
+   if btn(5) then
+	  print("Mem :"..stat(0), 0,  0, 8)
+	  print("Cpu1:"..stat(1), 0,  8, 8)
+	  print("Cpu2:"..stat(2), 0, 16, 8)
+	  print("Fps :"..stat(7), 0, 24, 8)
+	  print("mx: " .. mx, 0, 32, 8)
+	  print("my: " .. my, 0, 40, 8)
+	  print("mb: " .. mb, 0, 48, 8)
+   end
 end
 
 
