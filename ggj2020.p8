@@ -20,11 +20,24 @@ function makePoint(x, y, col)
 end
 
 function destroyPoint(x,y)
-   for p in all(data) do	
-	  if p.x==x and p.y==y then
+   for p in all(data) do
+     dist = sqrt((p.x - x)^2 + (p.y - y)^2)
+	  if dist < rnd(5)+5 and p.s == 1 then
 		 p.s = 0
+       createParticle(p.x, p.y, p.c)
 	  end
    end
+end
+
+function recreateEveryPoint()
+   for p in all(data) do	
+		p.s = 1
+	end
+   particles = {}
+end
+
+function createParticle(x, y, c)
+   add(particles, {x = x, y = y, c = c, sx = rnd(5)+1, sy = rnd(2)-1})
 end
 
 
@@ -44,22 +57,31 @@ function getStruct()
    return struct
 end
 
-function updatePoint(p)
-
-end
-
-
 function drawPoint(p)
    if p.s==1 then
 	  pset(p.x, p.y, p.c)
-   else
-	  pset(p.x, p.y, 2)
    end
-
 end
 
 function drawStruct()
    foreach(data, drawPoint)
+end
+
+function drawParticles()
+   for p in all(particles) do
+      pset(p.x, p.y, p.c)
+   end
+end
+
+function animateParticles()
+   for p in all(particles) do
+      p.x -= p.sx
+      p.y += p.sy
+
+      if (p.x < 0) then
+         del(particles, p)
+      end
+   end
 end
 
 
@@ -72,6 +94,33 @@ function printData()
 		 s = s .. s1
 	  end
 	  printh(s)
+   end
+end
+
+function createStars()
+   s = {}
+   for i = 0,25 do
+      add(s, {x = rnd(127), y = rnd(127), l = flr(rnd(3))})
+   end
+   return s
+end
+
+function drawStars()
+   for s in all(stars) do
+      pset(s.x, s.y, 7)
+   end
+end
+
+function animateStars()
+   for s in all(stars) do
+      if (s.l == 0) then s.x -= 1
+      elseif (s.l == 1) then s.x -= 2
+      elseif (s.l == 2) then s.x -= 4 end
+
+      if (s.x < 0) then
+         s.x = 129
+         s.l = flr(rnd(3))
+      end
    end
 end
 
@@ -90,11 +139,18 @@ function _init()
 	data = getStruct()
 	t = 0
 	pset(127,0,8)
+
+   particles = {}
+   stars = createStars()
 end
 
 
 function mouseLeft()
 	destroyPoint(mx, my)
+end
+
+function mouseRight()
+   recreateEveryPoint()
 end
 
 function _update()
@@ -106,13 +162,16 @@ function _update()
 		mb = stat(34)
 		if mb==1 then
 		   mouseLeft()
-		end
+		elseif mb==2 then
+         mouseRight()
+      end
 	end
 	mb = stat(34)
 
+   t += 1
 
-   foreach(data, updatePoint)
-   t += 0.01
+   animateParticles()
+   animateStars()
 end
 
 
@@ -121,7 +180,9 @@ end
 
 function _draw()
    cls()
+   drawStars()
    drawStruct()
+   drawParticles()
    pset(mx, my, 8)
    print("Mem :"..stat(0), 0,  0, 8)
    print("Cpu1:"..stat(1), 0,  8, 8)
