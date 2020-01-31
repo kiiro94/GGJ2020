@@ -22,8 +22,9 @@ end
 function destroyPoint(x,y)
    for p in all(data) do
      dist = sqrt((p.x - x)^2 + (p.y - y)^2)
-	  if dist < 5 then
+	  if dist < rnd(5)+5 and p.s == 1 then
 		 p.s = 0
+       createParticle(p.x, p.y, p.c)
 	  end
    end
 end
@@ -32,6 +33,11 @@ function recreateEveryPoint()
    for p in all(data) do	
 		p.s = 1
 	end
+   particles = {}
+end
+
+function createParticle(x, y, c)
+   add(particles, {x = x, y = y, c = c, sx = rnd(5)+1, sy = rnd(2)-1})
 end
 
 
@@ -59,14 +65,28 @@ end
 function drawPoint(p)
    if p.s==1 then
 	  pset(p.x, p.y, p.c)
-   else
-	  pset(p.x, p.y, 0)
    end
-
 end
 
 function drawStruct()
    foreach(data, drawPoint)
+end
+
+function drawParticles()
+   for p in all(particles) do
+      pset(p.x, p.y, p.c)
+   end
+end
+
+function animateParticles()
+   for p in all(particles) do
+      p.x -= p.sx
+      p.y += p.sy
+
+      if (p.x < 0) then
+         del(particles, p)
+      end
+   end
 end
 
 
@@ -97,6 +117,8 @@ function _init()
 	data = getStruct()
 	t = 0
 	pset(127,0,8)
+
+   particles = {}
 end
 
 
@@ -125,7 +147,9 @@ function _update()
 
 
    foreach(data, updatePoint)
-   t += 0.01
+   t += 1
+
+   animateParticles()
 end
 
 
@@ -135,6 +159,7 @@ end
 function _draw()
    cls()
    drawStruct()
+   drawParticles()
    pset(mx, my, 8)
    print("Mem :"..stat(0), 0,  0, 8)
    print("Cpu1:"..stat(1), 0,  8, 8)
