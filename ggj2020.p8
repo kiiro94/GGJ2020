@@ -21,7 +21,7 @@ end
 
 function destroyPoint(x,y)
    for p in all(data) do
-     dist = sqrt((p.x - x)^2 + (p.y - y)^2)
+     local dist = sqrt((p.x - x)^2 + (p.y - y)^2)
 	  if dist < rnd(5)+5 and p.s == 1 then
 		 p.s = 0
        createParticle(p.x, p.y, p.c)
@@ -324,6 +324,49 @@ function drawHpBar()
    print(hp .. "/" .. maxhp, 49, 0, 7)
 end
 
+
+function createAsteroid()
+   local ast = { x = 140, y = flr(rnd(128)), t = {x = flr(rnd(128)), y = flr(rnd(128))}, s = rnd(1) + 1 }
+   local hit = false
+   for p in all(data) do
+      if p.x == ast.t.x and p.y == ast.t.y then
+         hit = true
+      end
+   end
+   if not hit then
+      ast.t.x = -50
+   end
+
+   add(asteroids, ast)
+   
+end
+
+function drawAsteroid()
+   for a in all(asteroids) do
+      --circfill(a.x+1, a.y+1, 3, 10)
+      circfill(a.x, a.y, 3, 5)
+   end
+end
+
+function updateAsteroid()
+   for a in all(asteroids) do
+      if a.x <= -10 or a.y > 138 then
+         del(asteroids, a)
+      else
+         local angle = atan2(a.t.x - a.x, a.t.y - a.y)
+         a.x = a.x + a.s * cos(angle)
+         a.y = a.y + a.s * sin(angle)
+      
+         dist = abs(a.x - a.t.x) + abs(a.y - a.t.y)
+         if dist < 2 then
+            destroyPoint(a.t.x, a.t.y)
+            del(asteroids, a)
+            break
+         end
+      end
+   end
+end
+
 --------------------------------
 
 
@@ -356,15 +399,18 @@ function _init()
 
    maxhp = 1000
    hp = maxhp
+
+   asteroids = {}
 end
 
 
 function mouseLeft()
-   selfdestruct = true
+   --selfdestruct = true
+   createAsteroid()
 end
 
 function mouseRight()
-   destroyPoint(mx, my)
+   --destroyPoint(mx, my)
 end
 
 function mouseMiddle()
@@ -420,6 +466,12 @@ function _update()
    if laserone != nil then
       updateLaserone()
    end
+
+   if  t % 100 == 0 then
+      createAsteroid()
+   end 
+
+   updateAsteroid()
 end
 
 
@@ -437,15 +489,15 @@ function _draw()
       drawBoosters()
    end
    pset(mx, my, 8)
-   if btn(5) then
-	  print("Mem :"..stat(0), 0,  0, 8)
+   if mb == 2 then
+	  print("Mem :"..stat(0), 0,  64, 8)
 	  print("Cpu1:"..stat(1), 0,  8, 8)
 	  print("Cpu2:"..stat(2), 0, 16, 8)
 	  print("Fps :"..stat(7), 0, 24, 8)
 	  print("mx: " .. mx, 0, 32, 8)
 	  print("my: " .. my, 0, 40, 8)
 	  print("mb: " .. mb, 0, 48, 8)
-     print("ship pixels: " .. #data, 0, 56, 8)
+     print("asteroids: " .. #asteroids, 0, 56, 8)
    end
 
    for b in all(bots) do
@@ -457,6 +509,8 @@ function _draw()
    end
 
    drawHpBar()
+
+   drawAsteroid()
 
    --for f in all(fires) do
       --pset(f.x, f.y, 13)
