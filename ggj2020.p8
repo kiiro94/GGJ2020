@@ -11,11 +11,14 @@ printh("---------------------")
 --Data   from 1 to 128
 
 function makePoint(x, y, col)
+   b = 0
+   if col == 3 then b = 1 end
    return {
 	  x = x,
 	  y = y,
 	  s = 1,
-	  c = col
+	  c = col,
+     b = b
    }
 end
 
@@ -169,19 +172,20 @@ end
 function searchTarget(b)
    pivot = flr(rnd(5206))
    for i=pivot,5207 do
-      if data[i].s == 0 then
+      if data[i].s == 0 and data[i].c == botCol then
          data[i].s = 2
          return { x = data[i].x, y = data[i].y }
       end
    end
    for i=1,pivot do
-      if data[i].s == 0 then
+      if data[i].s == 0 and data[i].c == botCol then
          data[i].s = 2
          return { x = data[i].x, y = data[i].y }
       end
    end
    
    b.wait = true
+   del(bots, b)
    return nil
 end
 
@@ -285,6 +289,23 @@ function updateLaserone()
    end
 end
 
+
+function cycleBots()
+   if botCol != 15 then
+      botCol += 1
+   else
+      botCol = 0
+   end
+   for p in all(data) do
+      if p.b == 1 then
+         p.c = botCol
+      end
+   end
+   for b in all(bots) do
+      b.wait = false
+   end
+end
+
 --------------------------------
 
 
@@ -312,17 +333,23 @@ function _init()
    selfdestruct = false
 
    laserone = nil
+
+   botCol = 3
 end
 
 
 function mouseLeft()
-   if pget(mx-1, my) == 3 then
+   if pget(mx-1, my) == botCol then
       createBots()
    end
 end
 
 function mouseRight()
-   destroyPoint(mx, my)
+   if pget(mx-1, my) == botCol then
+      cycleBots()
+   else
+      destroyPoint(mx, my)
+   end
 end
 
 function mouseMiddle()
@@ -383,9 +410,9 @@ end
 
 
 function _draw()
-   if (not btn(5)) then
+   --if (not btn(5)) then
       cls()
-   end
+   --end
    drawStars()
    drawParticles()
    drawStruct()
