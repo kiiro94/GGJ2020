@@ -260,6 +260,31 @@ function selfDestruct()
    end
 end
 
+
+function createLaserone()
+   laserone = {y = my, g = 0}
+end
+
+function drawLaserone()
+   line(0, laserone.y, laserone.g, laserone.y, 11)
+   line(0, laserone.y + 1, laserone.g, laserone.y + 1, 11)
+end
+
+function updateLaserone()
+   laserone.g += 2
+
+   for p in all(data) do
+      if (p.x == laserone.g + 2 and p.y == laserone.y + flr(rnd(2)) - 1) then
+         p.s = 0
+         createParticle(p.x, p.y, p.c)
+      end
+   end
+
+   if laserone.g > 128 then
+      laserone = nil
+   end
+end
+
 --------------------------------
 
 
@@ -285,6 +310,8 @@ function _init()
 
    sdspeed = 1
    selfdestruct = false
+
+   laserone = nil
 end
 
 
@@ -341,8 +368,14 @@ function _update()
    if btnp(4) then
       selfdestruct = true
    end
-
    if selfdestruct and sdspeed < 2500 then selfDestruct() end
+
+   if (btnp(0)) then
+      createLaserone()
+   end
+   if laserone != nil then
+      updateLaserone()
+   end
 end
 
 
@@ -350,7 +383,9 @@ end
 
 
 function _draw()
-   cls()
+   if (not btn(5)) then
+      cls()
+   end
    drawStars()
    drawParticles()
    drawStruct()
@@ -371,6 +406,10 @@ function _draw()
 
    for b in all(bots) do
       pset(b.x, b.y, 11)
+   end
+
+   if (laserone != nil) then
+      drawLaserone()
    end
 
    --for f in all(fires) do
