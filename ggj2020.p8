@@ -216,14 +216,19 @@ end
 function createFire()
    source = {x = mx, y = my, growth = 0}
    add(fires, source)
+   for p in all(data) do
+      if p.x == source.x and p.y == source.y then
+         p.s = 0
+      end
+   end
 end
 
 function updateFires()
    if #fires > 0 then
       for k=1,#fires do
          fire = flr(rnd(#fires)) + 1
-         fires[k].growth += 0.01
-         for i=0,20 do
+         fires[k].growth += 0.02
+         for i=0,30 do
             point = flr(rnd(5207)) + 1
             dist = sqrt((data[point].x - fires[k].x)^2 + (data[point].y - fires[k].y)^2)
             if dist < rnd(1)+fires[k].growth and data[point].s == 1 then
@@ -286,8 +291,6 @@ end
 function mouseLeft()
    if pget(mx-1, my) == 3 then
       createBots()
-   else 
-      createFire()
    end
 end
 
@@ -296,7 +299,8 @@ function mouseRight()
 end
 
 function mouseMiddle()
-   recreateEveryPoint()
+   createFire()
+   --recreateEveryPoint()
 end
 
 
@@ -325,7 +329,10 @@ function _update()
 
    animateParticles()
    animateStars()
-   createBoosterParticles()
+
+   if not selfdestruct then
+      createBoosterParticles()
+   end
 
    moveBots()
 
@@ -366,9 +373,9 @@ function _draw()
       pset(b.x, b.y, 11)
    end
 
-   for f in all(fires) do
-      pset(f.x, f.y, 13)
-   end
+   --for f in all(fires) do
+      --pset(f.x, f.y, 13)
+   --end
 end
 
 
