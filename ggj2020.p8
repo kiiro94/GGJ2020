@@ -4,9 +4,6 @@ __lua__
 --main
 
 
-printh("---------------------")
-
-
 --Screen from 0 to 127
 --Data   from 1 to 128
 
@@ -45,6 +42,19 @@ function recreateEveryPoint()
 end
 
 function createParticle(x, y, c)
+   add(particles, {x = x, y = y, c = c, sx = rnd(5)+1, sy = rnd(2)-1})
+
+   --decrease hp bar relative to color destroyed
+   if     c == 13 then hp -= 2
+   elseif c == 2 then hp -= 2
+   elseif c == 7 then hp -= 1
+   elseif c == 6 then hp -= 2
+   elseif c == 8 then hp -= 13
+   elseif c == 9 then hp -= 7
+   end
+end
+
+function createBoosterParticle(x, y, c)
    add(particles, {x = x, y = y, c = c, sx = rnd(5)+1, sy = rnd(2)-1})
 end
 
@@ -95,18 +105,6 @@ function animateParticles()
 end
 
 
-function printData()
-   for j=1,32 do
-	  s = ""
-	  for i=1,128 do
-		 s1 = "0"
-		 if (data[j][i]==6) s1 = "."
-		 s = s .. s1
-	  end
-	  printh(s)
-   end
-end
-
 function createStars()
    s = {}
    for i = 0,25 do
@@ -143,8 +141,8 @@ end
 
 function createBoosterParticles()
    --if t % 1 == 0 then
-      createParticle(16, 40, 9)
-      createParticle(16, 88, 9)
+      createBoosterParticle(16, 40, 9)
+      createBoosterParticle(16, 88, 9)
    --end
 end
 
@@ -164,8 +162,8 @@ end
 
 function createBots()
    if #bots < 20 then
-      add(bots, {x = mx, y = my, s = rnd(0.5) + 1, t = nil, wait = false})
-      add(bots, {x = mx, y = my, s = rnd(0.5) + 1, t = nil, wait = false})
+      add(bots, {x = 51, y = 63, s = rnd(0.5) + 1, t = nil, wait = false})
+      add(bots, {x = 51, y = 64, s = rnd(0.5) + 1, t = nil, wait = false})
    end
 end
 
@@ -214,6 +212,15 @@ function moveBots()
                   end
                   p.s = 1
                   del(bots, b)
+
+                  --increase hp bar relative to color repaired
+                  if     p.c == 13 then hp += 2
+                  elseif p.c == 2 then hp += 2
+                  elseif p.c == 7 then hp += 1
+                  elseif p.c == 6 then hp += 2
+                  elseif p.c == 8 then hp += 13
+                  elseif p.c == 9 then hp += 7
+                  end
                end
             end
          end
@@ -311,6 +318,12 @@ function cycleBots()
    end
 end
 
+
+function drawHpBar()
+   rectfill(0, 0, (hp/maxhp)*128, 4, 13)
+   print(hp .. "/" .. maxhp, 49, 0, 7)
+end
+
 --------------------------------
 
 
@@ -340,21 +353,18 @@ function _init()
    laserone = nil
 
    botCol = 3
+
+   maxhp = 1000
+   hp = maxhp
 end
 
 
 function mouseLeft()
-   if pget(mx-1, my) == botCol then
-      createBots()
-   end
+   selfdestruct = true
 end
 
 function mouseRight()
-   if pget(mx-1, my) == botCol then
-      cycleBots()
-   else
-      destroyPoint(mx, my)
-   end
+   destroyPoint(mx, my)
 end
 
 function mouseMiddle()
@@ -398,7 +408,9 @@ function _update()
    updateFires()
 
    if btnp(4) then
-      selfdestruct = true
+      createBots()
+   elseif btnp(5) then
+      cycleBots()
    end
    if selfdestruct and sdspeed < 2500 then selfDestruct() end
 
@@ -443,6 +455,8 @@ function _draw()
    if (laserone != nil) then
       drawLaserone()
    end
+
+   drawHpBar()
 
    --for f in all(fires) do
       --pset(f.x, f.y, 13)
