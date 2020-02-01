@@ -24,6 +24,7 @@ function destroyPoint(x,y)
      local dist = sqrt((p.x - x)^2 + (p.y - y)^2)
 	  if dist < rnd(5)+5 and p.s == 1 then
 		 p.s = 0
+       add(brokenData, p)
        createParticle(p.x, p.y, p.c)
 	  end
    end
@@ -75,16 +76,34 @@ function getStruct()
    return struct
 end
 
+function getBotSpawn()
+   bS = {}
+   for p in all(data) do 
+      if p.b == 1 then
+         add(bS, p)
+      end
+   end
+   return bS
+end
+
 function drawPoint(p)
    if p.s==1 then
 	   pset(p.x, p.y, p.c)
-   --elseif p.s==2 then
-      --pset(p.x, p.y, 14)
    end
 end
 
-function drawStruct()
-   foreach(data, drawPoint)
+function drawBrokenPoint(p)
+   if p.s==0 then
+	   pset(p.x, p.y, 0)
+   end
+end
+
+function drawBrokenStruct()
+   foreach(brokenData, drawBrokenPoint)
+end
+
+function drawBotSpawn()
+   foreach(botSpawn, drawPoint)
 end
 
 function drawParticles()
@@ -168,17 +187,17 @@ function createBots()
 end
 
 function searchTarget(b)
-   pivot = flr(rnd(5206))
-   for i=pivot,5207 do
-      if data[i].s == 0 and data[i].c == botCol then
-         data[i].s = 2
-         return { x = data[i].x, y = data[i].y }
+   pivot = flr(rnd(#brokenData))
+   for i=pivot + 1 ,#brokenData do
+      if brokenData[i].s == 0 and brokenData[i].c == botCol then
+         brokenData[i].s = 2
+         return { x = brokenData[i].x, y = brokenData[i].y }
       end
    end
    for i=1,pivot do
-      if data[i].s == 0 and data[i].c == botCol then
-         data[i].s = 2
-         return { x = data[i].x, y = data[i].y }
+      if brokenData[i].s == 0 and brokenData[i].c == botCol then
+         brokenData[i].s = 2
+         return { x = brokenData[i].x, y = brokenData[i].y }
       end
    end
    
@@ -203,14 +222,14 @@ function moveBots()
 
          dist = sqrt((b.x - b.t.x)^2 + (b.y - b.t.y)^2)
          if (dist < 2) then
-            for p in all(data) do
+            for p in all(brokenData) do
                if (b.t.x == p.x and b.t.y == p.y) do
                   for f in all(fires) do
                      if f.x == p.x and f.y == p.y then
                         del(fires, f)
                      end
                   end
-                  p.s = 1
+                  del(brokenData, p)
                   del(bots, b)
 
                   --increase hp bar relative to color repaired
@@ -308,13 +327,13 @@ function cycleBots()
    else
       botCol = 0
    end
-   for p in all(data) do
+   for p in all(brokenData) do
       if p.b == 1 then
          p.c = botCol
       end
    end
-   for b in all(bots) do
-      b.wait = false
+   for p in all(botSpawn) do
+      p.c = botCol
    end
 end
 
@@ -378,6 +397,8 @@ function _init()
 	my = stat(33)
 	mb = stat(34)
 	data = getStruct()
+   brokenData = {}
+   botSpawn = getBotSpawn()
 	t = 0
 	pset(127,0,8)
 
@@ -421,7 +442,7 @@ end
 
 
 
-function _update()
+function _update60()
 	mx = stat(32)
 	my = stat(33)
 
@@ -484,7 +505,12 @@ function _draw()
    --end
    drawStars()
    drawParticles()
-   drawStruct()
+
+   spr(3, 16, 0, 16, 16)
+
+   drawBotSpawn()
+   drawBrokenStruct()
+
    if not selfdestruct then
       drawBoosters()
    end
@@ -497,7 +523,7 @@ function _draw()
 	  print("mx: " .. mx, 0, 32, 8)
 	  print("my: " .. my, 0, 40, 8)
 	  print("mb: " .. mb, 0, 48, 8)
-     print("asteroids: " .. #asteroids, 0, 56, 8)
+     print("botspawn: " .. botSpawn[1].c, 0, 56, 8)
    end
 
    for b in all(bots) do
