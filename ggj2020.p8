@@ -167,7 +167,7 @@ function createBots()
 end
 
 function searchTarget(b)
-   pivot = flr(rnd(5207))
+   pivot = flr(rnd(5206))
    for i=pivot,5207 do
       if data[i].s == 0 then
          data[i].s = 2
