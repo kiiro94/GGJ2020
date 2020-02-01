@@ -21,12 +21,10 @@ function fixind(ind)
 end
 
 
-
 function writeobj(x,y,c,s,b)
    b=0
    if (col==3) b=1 
    poke(fixind(x + (y*128)), c+s*64+b*128)
-   --printh("writing "..val.." at 0x"..num2hex(fixind(ind)))
 end
 
 function setobjs(addr, val)
@@ -35,6 +33,22 @@ end
 
 function unsetobjs(addr, val)
    poke(addr, bxor(0b1000000, val))
+end
+
+function setobjc(addr, val, newcol)
+   poke(addr,  bor(0b11111))
+   poke(addr, band(0b11111))
+   newval = bxor(newcol, peek(addr))
+   local temp = val
+   if val>=128 then
+      temp -= 128
+      newval += 128
+   end
+   if val>=64 then
+      temp -= 64
+      newval += 64
+   end
+   poke(addr, newval)
 end
 
 
@@ -55,7 +69,9 @@ end
 
 
 function checkDist(x1, y1, x2, y2, treshold)
-   return (sqrt((x1 - x2)^2 + (y1 - y2)^2) < treshold)
+   --local dist =sqrt((x1 - x2)^2 + (y1 - y2)^2)
+   local dist = abs(x1+1 - x2) + abs(y1+1 - y2)
+   return (dist < treshold)
 end
 
 
@@ -71,16 +87,17 @@ end
 
 
 function destroyPoint(x,y)
-   local checkBox = pointsInBox(x, y, 10, 10)
+   local checkBox = pointsInBox(x, y, 20, 20)
    for p in all(checkBox) do
-	  local pointDataIndex = fixind(p.x + (p.y*128))
-	  local pointData = peek(pointDataIndex)
-	  local point_s = shr(band(val, 0b1000000), 6)
-	  if checkDist(p.x, x, p.y, y, 5+rand(5)) and point_s == 1 then
-		 unsetobjs(pointDataIndex, pointData)
-		 add(destroyedPoints, {p.x, p.y, 0})
-		 createParticle(p.x, p.y, pointData%16)
-	  end
+      local pointDataIndex = fixind(p[1] + (p[2]*128))
+      local pointData = peek(pointDataIndex)
+      local pino = band(pointData, 0b1000000)
+      local point_s = shr(pino, 6)
+      if checkDist(p[1], p[2], x, y, 5+rnd(5)) and point_s == 1 then
+         unsetobjs(pointDataIndex, pointData)
+         add(destroyedPoints, {p[1], p[2], 0, pointData%16})
+         createParticle(p[1], p[2], pointData%16)
+     end
    end
 
    for b in all(bots) do
@@ -121,7 +138,7 @@ function getStruct()
 		 if col!=0 then
 			add(struct, {i,j})
 			if col==3 then
-			   add(botSpawnPoints, {i,j}	
+			   add(botSpawnPoints, {i,j})
 			end
 		 end
 	  end
@@ -222,9 +239,9 @@ end
 function searchTarget()
    if #destroyedPoints > 0 then 
 	  for p in all(destroyedPoints) do
-		 if p[3]==0 then
+		 if p[3]==0  and botCol==p[4] then
 			p[3] = 1
-			return { x = randPoint.x, y = randPoint.y }
+			return { x = p[1], y = p[2] }
 		 end
 	  end
    end
@@ -252,10 +269,11 @@ function moveBots()
 
 
 		 --Collision with target
-		 if checkDist(b.x, b.y, b.t.x, b.t.y, 2) then
+		 if checkDist(b.x, b.y, b.t.x, b.t.y, 3) then
 			local pointAddr = fixind(b.t.x + (b.t.y*128))
 			local pointData = peek(pointAddr)
-			local pointS = shr(band(val, 0b1000000), 6)
+			local pointS = shr(band(pointData, 0b1000000), 6)
+			local pointC = pointData%16
 
 			--Extinguish fire
 			for f in all(fires) do
@@ -271,12 +289,12 @@ function moveBots()
 			del(bots, b)
 
 			--increase hp bar relative to color repaired
-			if     p.c == 13 then hp += 2
-			elseif p.c ==  2 then hp += 2
-			elseif p.c ==  7 then hp += 1
-			elseif p.c ==  6 then hp += 2
-			elseif p.c ==  8 then hp += 13
-			elseif p.c ==  9 then hp += 7
+			if     pointC == 13 then hp += 2
+			elseif pointC ==  2 then hp += 2
+			elseif pointC ==  7 then hp += 1
+			elseif pointC ==  6 then hp += 2
+			elseif pointC ==  8 then hp += 13
+			elseif pointC ==  9 then hp += 7
 			end
 		 end
 	  end
@@ -303,8 +321,8 @@ function updateFires()
 			local d = checkDist(point.x , point.y, fires[k].x, fires[k].y, tresh)
 			local pointAddr = fixind(mx + (my*128))
 			local pointData = peek(pointAddr)
-			local point_c = val%16
-			local point_s = s=shr(band(val, 0b1000000), 6),
+			local point_c = pointData%16
+			local point_s = shr(band(pointData, 0b1000000), 6)
             if d and point_s == 1 and point_c == 7 then
 			   unsetobjs(pointAddr, pointData)
                createParticle(point.x, point.y, 8)
@@ -321,7 +339,7 @@ function selfDestruct()
       point = flr(rnd(#shipPoints)) + 1
 	  local pointAddr = fixind(mx + (my*128))
 	  local pointData = peek(pointAddr)
-	  local point_s = s=shr(band(val, 0b1000000), 6),
+	  local point_s = shr(band(pointData, 0b1000000), 6)
 	  if point_s != 0 then
 		 unsetobjs(pointAddr, pointData)
          if sdspeed < 250 then
@@ -363,7 +381,11 @@ function cycleBots()
    end
 
    for p in all(botSpawnPoints) do
-	  p.c = botCol
+      local pointAddr = fixind(p[1] + (p[2]*128))
+		local pointData = peek(pointAddr)
+		local point_c = pointData%16
+      setobjc(pointAddr, pointData, botCol)
+	   p[4] = botCol
    end
 end
 
@@ -376,11 +398,13 @@ end
 
 function createAsteroid()
    local ast = { x = 140, y = flr(rnd(128)), t = {x = flr(rnd(128)), y = flr(rnd(128))}, s = rnd(1) + 1 }
+   --local ast = { x = 140, y = flr(rnd(128)), t = {x = 64, y = 50}, s = rnd(1) + 1 }
    local hit = false
-   for p in all(shipPoints) do
-      if p.x == ast.t.x and p.y == ast.t.y then
-         hit = true
-      end
+   local pointAddr = fixind(ast.t.x + (ast.t.y*128))
+   local pointData = peek(pointAddr)
+   local point_c = pointData%16
+   if point_c != 0 then
+      hit = true
    end
    if not hit then
       ast.t.x = -50
@@ -392,8 +416,8 @@ end
 
 function drawAsteroid()
    for a in all(asteroids) do
-      --circfill(a.x+1, a.y+1, 3, 10)
       circfill(a.x, a.y, 3, 5)
+      circfill(a.t.x, a.t.y, 3, 1)
    end
 end
 
@@ -570,10 +594,6 @@ function _draw()
    drawHpBar()
 
    drawAsteroid()
-
-   --for f in all(fires) do
-      --pset(f.x, f.y, 13)
-   --end
 end
 
 
