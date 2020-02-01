@@ -228,8 +228,10 @@ end
 
 function createBots()
    if #bots < 20 then
-      add(bots, {x = 51, y = 63, s = rnd(0.5) + 1, t_ind=0, t = nil, wait = false})
-      add(bots, {x = 51, y = 64, s = rnd(0.5) + 1, t_ind=0, t = nil, wait = false})
+      add(bots, {x = 51, y = 63, s = rnd(1) + 2, t_ind=0, t = nil, wait = false})
+      add(bots, {x = 51, y = 64, s = rnd(1) + 2, t_ind=0, t = nil, wait = false})
+      add(bots, {x = 51, y = 65, s = rnd(1) + 2, t_ind=0, t = nil, wait = false})
+      add(bots, {x = 51, y = 66, s = rnd(1) + 2, t_ind=0, t = nil, wait = false})
    end
 end
 
@@ -269,7 +271,7 @@ function moveBots()
 
 
 		 --Collision with target
-		 if checkDist(b.x, b.y, b.t.x, b.t.y, 3) then
+		 if checkDist(b.x, b.y, b.t.x, b.t.y, 4) then
 			local pointAddr = fixind(b.t.x + (b.t.y*128))
 			local pointData = peek(pointAddr)
 			local pointS = shr(band(pointData, 0b1000000), 6)
@@ -336,14 +338,14 @@ end
 function selfDestruct()
    sdspeed += 50
    for i=0,sdspeed do
-      point = flr(rnd(#shipPoints)) + 1
-	  local pointAddr = fixind(mx + (my*128))
+      point = shipPoints[flr(rnd(#shipPoints)) + 1]
+	  local pointAddr = fixind(point[1] + (point[2]*128))
 	  local pointData = peek(pointAddr)
 	  local point_s = shr(band(pointData, 0b1000000), 6)
 	  if point_s != 0 then
 		 unsetobjs(pointAddr, pointData)
          if sdspeed < 250 then
-            createParticle(shipPoints[point].x, shipPoints[point].y, 8)
+            createParticle(point[1], point[2], 8)
          end
 	  end
    end
@@ -373,11 +375,19 @@ function updateLaserone()
 end
 
 
-function cycleBots()
-   if botCol != 15 then
-      botCol += 1
+function cycleBots(dir)
+   if dir == 0 then
+      if botCol != 15 then
+         botCol += 1
+      else
+         botCol = 0
+      end
    else
-      botCol = 0
+      if botCol != 0 then
+         botCol -= 1
+      else
+         botCol = 15
+      end
    end
 
    for p in all(botSpawnPoints) do
@@ -397,14 +407,18 @@ end
 
 
 function createAsteroid()
-   local ast = { x = 140, y = flr(rnd(128)), t = {x = flr(rnd(128)), y = flr(rnd(128))}, s = rnd(1) + 1 }
+   local ast = { x = 140, y = flr(rnd(128)), t = {x = flr(rnd(128)), y = flr(rnd(128))}, s = rnd(1) + 2 }
    --local ast = { x = 140, y = flr(rnd(128)), t = {x = 64, y = 50}, s = rnd(1) + 1 }
    local hit = false
    local pointAddr = fixind(ast.t.x + (ast.t.y*128))
    local pointData = peek(pointAddr)
    local point_c = pointData%16
+   local point_b = shr(band(pointData, 0b10000000), 7)
    if point_c != 0 then
       hit = true
+      if point_b == 1 then
+         hit = false
+      end
    end
    if not hit then
       ast.t.x = -50
@@ -417,7 +431,6 @@ end
 function drawAsteroid()
    for a in all(asteroids) do
       circfill(a.x, a.y, 3, 5)
-      circfill(a.t.x, a.t.y, 3, 1)
    end
 end
 
@@ -489,7 +502,7 @@ end
 
 function mouseLeft()
    --selfdestruct = true
-   createAsteroid()
+   --createAsteroid()
 end
 
 function mouseRight()
@@ -537,23 +550,30 @@ function _update()
 
    if btnp(4) then
       createBots()
-   elseif btnp(5) then
-      cycleBots()
    end
-   if selfdestruct and sdspeed < 2500 then selfDestruct() end
 
    if (btnp(0)) then
-      createLaserone()
+      cycleBots(0)
+   elseif (btnp(1)) then
+      cycleBots(1)
    end
+
+   if selfdestruct and sdspeed < 2500 then selfDestruct() end
+
+
    if laserone != nil then
       updateLaserone()
    end
 
-   if  t % 100 == 0 then
+   if  t % 60 == 0 then
       createAsteroid()
    end 
 
    updateAsteroid()
+
+   if (hp <= 0) then
+      selfdestruct = true
+   end
 end
 
 
@@ -591,7 +611,9 @@ function _draw()
       drawLaserone()
    end
 
-   drawHpBar()
+   if not selfdestruct then
+      drawHpBar()
+   end
 
    drawAsteroid()
 end
