@@ -147,7 +147,7 @@ end
 
 function screenShake()
    if shake.t > 0 then
-      if shake.t % 2 == 0 then
+      if shake.t % 3 == 0 then
          shake.x += rnd(3) - 1.5
          shake.y += rnd(3) - 1.5
       else
@@ -239,6 +239,22 @@ function updateFires()
    end
 end
 
+
+function selfDestruct()
+   sdspeed += 50
+
+   for i=0,sdspeed do
+      point = flr(rnd(5207)) + 1
+
+      if (data[point].s != 0) then
+         data[point].s = 0
+         if sdspeed < 250 then
+            createParticle(data[point].x, data[point].y, 8)
+         end
+      end
+   end
+end
+
 --------------------------------
 
 
@@ -261,6 +277,9 @@ function _init()
    bots = {}
 
    fires = {}
+
+   sdspeed = 1
+   selfdestruct = false
 end
 
 
@@ -311,6 +330,12 @@ function _update()
    moveBots()
 
    updateFires()
+
+   if btnp(4) then
+      selfdestruct = true
+   end
+
+   if selfdestruct and sdspeed < 2500 then selfDestruct() end
 end
 
 
@@ -322,7 +347,9 @@ function _draw()
    drawStars()
    drawParticles()
    drawStruct()
-   drawBoosters()
+   if not selfdestruct then
+      drawBoosters()
+   end
    pset(mx, my, 8)
    if btn(5) then
 	  print("Mem :"..stat(0), 0,  0, 8)
