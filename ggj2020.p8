@@ -467,6 +467,193 @@ end
 
 
 --cose
+
+
+-->8
+--pathfinding
+
+
+
+
+function findPath(start, goal)
+   wallCol = 2
+
+   --initialize data with current point
+   frontier = {}
+   insert(frontier, start, 0)
+   came_from = {}
+   came_from[vectoindex(start)] = nil
+   cost_so_far = {}
+   cost_so_far[vectoindex(start)] = 0
+
+   --Cycle until i have frontiers unexplored
+   while (#frontier > 0 and #frontier < 1000) do
+	  --Take the current frontier tile
+	  current = popEnd(frontier)
+
+	  --If I have reach my goal we can break
+	  if (vectoindex(current) == vectoindex(goal)) break 
+
+	  --Get cycle through all the neighbours
+	  local neighbours = getNeighbours(current)
+	  for next in all(neighbours) do
+		 local nextIndex = vectoindex(next)
+		 local new_cost = cost_so_far[vectoindex(current)] + 1
+
+		 --If I have not explored this tile or if I found a better route to an existing one
+		 if (cost_so_far[nextIndex] == nil) or (new_cost < cost_so_far[nextIndex]) then
+			--Set this tile as a new frontier and save its cost
+			cost_so_far[nextIndex] = new_cost
+			local priority = new_cost + heuristic(goal, next)
+			insert(frontier, next, priority)
+			
+			--Save from where I came
+			came_from[nextIndex] = current
+			
+			--if (nextIndex != vectoindex(start)) and (nextIndex != vectoindex(goal)) then
+			--   mset(next[1],next[2],19)
+			--end
+		 end 
+	  end
+   end
+
+   --Recreate the path from the goal
+   current = came_from[vectoindex(goal)]
+   path = {}
+   local cindex = vectoindex(current)
+   local sindex = vectoindex(start)
+   while cindex != sindex do
+	  add(path, current)
+	  current = came_from[cindex]
+	  cindex = vectoindex(current)
+   end
+   reverse(path)
+
+   return path
+   --for point in all(path) do
+   --	  mset(point[1],point[2],18)
+   --end
+
+end
+
+
+
+
+
+
+
+
+
+-- manhattan distance on a square grid
+function heuristic(a, b)
+   return abs(a[1] - b[1]) + abs(a[2] - b[2])
+end
+
+-- find all existing neighbours of a position that are not walls
+debugCounter = 0
+function getNeighbours(pos)
+   local neighbours={}
+   local x = pos[1]
+   local y = pos[2]
+
+
+
+   if x>0 and x<128 and y>0 and y<128 then
+	  for p in all(data) do
+		 if p.c!=2 then
+			if     (p.x==x-1 and p.y==y) then add(neighbours, {x-1,y})
+		    elseif (p.x==x+1 and p.y==y) then add(neighbours, {x+1,y})
+            elseif (p.x==x and p.y==y+1) then add(neighbours, {x,y+1})
+            elseif (p.x==x and p.y==y-1) then add(neighbours, {x,y-1})
+			end
+		 end
+	  end
+   end
+   debugCounter += 1
+   printh(pos[1] .. "," .. pos[2] .. " dc:" .. debugCounter)
+
+   -- for making diagonals
+   --if (x+y) % 2 == 0 then
+   --	  reverse(neighbours)
+   --end
+   return neighbours
+end
+
+-- insert into start of table
+function insert(t, val)
+   for i=(#t+1),2,-1 do
+	  t[i] = t[i-1]
+   end
+   t[1] = val
+end
+
+-- insert into table and sort by priority
+function insert(t, val, p)
+   if #t >= 1 then
+	  add(t, {})
+	  for i=(#t),2,-1 do
+		 
+		 local next = t[i-1]
+		 if p < next[2] then
+			t[i] = {val, p}
+			return
+		 else
+			t[i] = next
+		 end
+	  end
+	  t[1] = {val, p}
+   else
+	  add(t, {val, p}) 
+   end
+end
+
+-- pop the last element off a table
+function popEnd(t)
+   local top = t[#t]
+   del(t,t[#t])
+   return top[1]
+end
+
+function reverse(t)
+   for i=1,(#t/2) do
+	  local temp = t[i]
+	  local oppindex = #t-(i-1)
+	  t[i] = t[oppindex]
+	  t[oppindex] = temp
+   end
+end
+
+-- translate a 2d x,y coordinate to a 1d index and back again
+function vectoindex(vec)
+   return maptoindex(vec[1],vec[2])
+end
+function maptoindex(x, y)
+   return ((x+1) * 16) + y
+end
+function indextomap(index)
+   local x = (index-1)/16
+   local y = index - (x*w)
+   return {x,y}
+end
+
+-- pop the first element off a table (unused
+function pop(t)
+   local top = t[1]
+   for i=1,(#t) do
+	  if i == (#t) then
+		 del(t,t[i])
+	  else
+		 t[i] = t[i+1]
+	  end
+   end
+   return top
+end
+
+
+
+
+
+
 __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
