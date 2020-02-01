@@ -160,14 +160,14 @@ end
 
 
 function createBots()
-   if #bots < 20 and pget(mx-1, my) == 3 then
+   if #bots < 20 then
       add(bots, {x = mx, y = my, s = rnd(0.5) + 1, t = nil, wait = false})
       add(bots, {x = mx, y = my, s = rnd(0.5) + 1, t = nil, wait = false})
    end
 end
 
 function searchTarget(b)
-   pivot = flr(rnd(5208))
+   pivot = flr(rnd(5207))
    for i=pivot,5207 do
       if data[i].s == 0 then
          data[i].s = 2
@@ -212,6 +212,33 @@ function moveBots()
    end
 end
 
+
+function createFire()
+   source = {x = mx, y = my, growth = 0}
+   add(fires, source)
+end
+
+function updateFires()
+   if #fires > 0 then
+      for k=1,#fires do
+         fire = flr(rnd(#fires)) + 1
+         fires[k].growth += 0.01
+         for i=0,20 do
+            point = flr(rnd(5207)) + 1
+            dist = sqrt((data[point].x - fires[k].x)^2 + (data[point].y - fires[k].y)^2)
+            if dist < rnd(1)+fires[k].growth and data[point].s == 1 then
+               data[point].s = 0
+               createParticle(data[point].x, data[point].y, 8)
+               
+               for b in all(bots) do
+                  b.wait = false
+               end
+            end
+         end
+      end
+   end
+end
+
 --------------------------------
 
 
@@ -232,11 +259,17 @@ function _init()
    shake = { x = 0, y = 0, t = 0}
 
    bots = {}
+
+   fires = {}
 end
 
 
 function mouseLeft()
-   createBots()
+   if pget(mx-1, my) == 3 then
+      createBots()
+   else 
+      createFire()
+   end
 end
 
 function mouseRight()
@@ -276,6 +309,8 @@ function _update()
    createBoosterParticles()
 
    moveBots()
+
+   updateFires()
 end
 
 
@@ -302,6 +337,10 @@ function _draw()
 
    for b in all(bots) do
       pset(b.x, b.y, 11)
+   end
+
+   for f in all(fires) do
+      pset(f.x, f.y, 13)
    end
 end
 
