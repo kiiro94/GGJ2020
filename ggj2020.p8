@@ -12,45 +12,203 @@ __lua__
 -------------MEMORY STUFF-----------------
 ------------------------------------------
 
-function fixind(ind)
-   if ind<=9472 then
-	  return 2815+ind
+--function fixind(ind)
+--   if ind<=9472 then
+--	  return 2815+ind
+--   else
+--	  return 17152+(ind-9472)
+--   end
+--end
+--
+--
+--function writeobj(x,y,c,s,b)
+--   b=0
+--   if (col==3) b=1 
+--   poke(fixind(x + (y*128)), c+s*64+b*128)
+--end
+--
+--function setobjs(addr, val)
+--   poke(addr, bor(0b1000000, val))
+--end
+--
+--function unsetobjs(addr, val)
+--   poke(addr, bxor(0b1000000, val))
+--end
+--
+--function setobjc(addr, val, newcol)
+--   poke(addr,  bor(0b11111))
+--   poke(addr, band(0b11111))
+--   newval = bxor(newcol, peek(addr))
+--   local temp = val
+--   if val>=128 then
+--      temp -= 128
+--      newval += 128
+--   end
+--   if val>=64 then
+--      temp -= 64
+--      newval += 64
+--   end
+--   poke(addr, newval)
+--end
+
+
+
+
+-- 0000 0000 -> 1 byte
+-- SSSS BBBB -> leftmost 4 are 4 pixels of S, rightmost 4 are 4 pixels of B
+-- 1234 1234
+
+function getColFromPoint(x,y)
+   local index = x+y*128
+   local val = peek(flr(index/2))
+   if index%2!=0 then
+	  --take leftmost pixel, discard everything right with shift
+	  return shr(val, 4)
    else
-	  return 17152+(ind-9472)
+	  --take rightmost pixel, discard everything left with and
+	  return band(val, 15)
    end
 end
 
 
-function writeobj(x,y,c,s,b)
-   b=0
-   if (col==3) b=1 
-   poke(fixind(x + (y*128)), c+s*64+b*128)
-end
 
-function setobjs(addr, val)
-   poke(addr, bor(0b1000000, val))
-end
 
-function unsetobjs(addr, val)
-   poke(addr, bxor(0b1000000, val))
-end
-
-function setobjc(addr, val, newcol)
-   poke(addr,  bor(0b11111))
-   poke(addr, band(0b11111))
-   newval = bxor(newcol, peek(addr))
-   local temp = val
-   if val>=128 then
-      temp -= 128
-      newval += 128
+function getSFromPoint(x,y)
+   local index = x+y*128
+   local val = peek(flr(index/4)+0x4300)
+   local r = index%4
+   if r==0 then
+	  val = shr(val, 7)
+   elseif r==1 then
+	  val = shr(val, 6)
+   elseif r==2 then
+	  val = shr(val, 5)
+   elseif r==3 then
+	  val = shr(val, 4)
    end
-   if val>=64 then
-      temp -= 64
-      newval += 64
-   end
-   poke(addr, newval)
+   return band(val, 0b00000001) -- take only one bit at the end
 end
 
+function getBFromPoint(x,y)
+   local index = x+y*128
+   local val = peek(flr(index/4)+0x4300)
+   local r = index%4
+   if r==0 then
+	  val = shr(val, 3)
+   elseif r==1 then
+	  val = shr(val, 2)
+   elseif r==2 then
+	  val = shr(val, 1)
+   elseif r==3 then
+	  --val = shr(val, 0) --not necessary
+   end
+   return band(val, 0b00000001) -- take only one bit at the end
+end
+
+
+function setSFromPoint(x,y,newVal)
+   local index = x+y*128 
+   local addr = flr(index/4)+0x4300
+   local currVal = peek(addr)
+   local r = index%4
+   local finalVal = 0
+
+   
+   if r==0 then
+	  bit = band(shr(currVal, 7), 0b00000001)
+	  if bit == 1 and newVal==0 then
+		 finalVal = band(currVal, 0b01111111) --Unset the glag with and
+		 poke(addr, finalVal  )
+	  elseif bit==0 and newVal==1 then
+		 finalVal = bor(currVal, 0b10000000) --Set the flag with or
+		 poke(addr, finalVal  )
+	  end
+   elseif r==1 then
+	  bit = band(shr(currVal, 6), 0b00000001)
+	  if bit == 1 and newVal==0 then
+		 finalVal = band(currVal, 0b10111111) --Unset the glag with and
+		 poke(addr, finalVal  )
+	  elseif bit==0 and newVal==1 then
+		 finalVal = bor(currVal, 0b01000000) --Set the flag with or
+		 poke(addr, finalVal  )
+	  end
+   elseif r==2 then
+	  bit = band(shr(currVal, 5), 0b00000001)
+	  if bit == 1 and newVal==0 then
+		 finalVal = band(currVal, 0b11011111) --Unset the glag with and
+		 poke(addr, finalVal  )
+	  elseif bit==0 and newVal==1 then
+		 finalVal = bor(currVal, 0b00100000) --Set the flag with or
+		 poke(addr, finalVal  )
+	  end
+   elseif r==3 then
+	  bit = band(shr(currVal, 4), 0b00000001)
+	  if bit == 1 and newVal==0 then
+		 finalVal = band(currVal, 0b11101111) --Unset the glag with and
+		 poke(addr, finalVal  )
+	  elseif bit==0 and newVal==1 then
+		 finalVal = bor(currVal, 0b00010000) --Set the flag with or
+		 poke(addr, finalVal  )
+	  end
+   end
+
+   --printh("---")
+   --printh("from: ".. currVal)
+   --printh("to  : ".. finalVal)
+   --printh("for addr: 0x" .. num2hex(addr))
+
+end
+
+
+function setBFromPoint(x,y,newVal)
+   local index = x+y*128
+   local addr = flr(index/4)+0x4300
+   local currVal = peek(addr)
+   local r = index%4
+   local finalVal = 0
+
+   if r==0 then
+	  bit = band(shr(currVal, 3), 0b00000001)
+	  if bit == 1 and newVal==0 then
+		 finalVal = band(currVal, 0b11110111) --Unset the glag with and
+		 poke(addr, finalVal)
+	  elseif bit==0 and newVal==1 then
+		 finalVal = bor(currVal, 0b00001000) --Set the flag with or
+		 poke(addr, finalVal)
+	  end
+   elseif r==1 then
+	  bit = band(shr(currVal, 2), 0b00000001)
+	  if bit == 1 and newVal==0 then
+		 finalVal = band(currVal, 0b11111011) --Unset the glag with and
+		 poke(addr, finalVal)
+	  elseif bit==0 and newVal==1 then
+		 finalVal = bor(currVal, 0b00000100) --Set the flag with or
+		 poke(addr, finalVal)
+	  end
+   elseif r==2 then
+	  bit = band(shr(currVal, 1), 0b00000001)
+	  if bit == 1 and newVal==0 then
+		 finalVal = band(currVal, 0b11111101) --Unset the glag with and
+		 poke(addr, finalVal)
+	  elseif bit==0 and newVal==1 then
+		 finalVal = bor(currVal, 0b00000010) --Set the flag with or
+		 poke(addr, finalVal)
+	  end
+   elseif r==3 then
+	  bit = band(currVal, 0b00000001)
+	  if bit == 1 and newVal==0 then
+		 finalVal = band(currVal, 0b11111110) --Unset the glag with and
+		 poke(addr, finalVal)
+	  elseif bit==0 and newVal==1 then
+		 finalVal = bor(currVal, 0b00000001) --Set the flag with or
+		 poke(addr, finalVal)
+	  end
+   end
+   --printh("---")
+   --printh("from: ".. currVal)
+   --printh("to  : ".. finalVal)
+   --printh("for addr: 0x" .. num2hex(addr))
+end
 
 
 
@@ -89,19 +247,21 @@ end
 function destroyPoint(x,y)
    local checkBox = pointsInBox(x, y, 20, 20)
    for p in all(checkBox) do
-      local pointDataIndex = fixind(p[1] + (p[2]*128))
-      local pointData = peek(pointDataIndex)
-      local point_s = shr(band(pointData, 0b1000000), 6)
-      local point_b = shr(band(pointData, 0b10000000), 7)
+      --local pointDataIndex = fixind(p[1] + (p[2]*128))
+      --local pointData = peek(pointDataIndex)
+      --local point_s = shr(band(pointData, 0b1000000), 6)
+      --local point_b = shr(band(pointData, 0b10000000), 7)
+	  local point_s = getSFromPoint(p[1], p[2])
+	  local point_b = getBFromPoint(p[1], p[2])
       if checkDist(p[1], p[2], x, y, 5+rnd(5)) and point_s == 1 then
-         unsetobjs(pointDataIndex, pointData)
-         add(destroyedPoints, {p[1], p[2], 0, pointData%16, point_b})
-         createParticle(p[1], p[2], pointData%16)
-     end
-   end
+         --unsetobjs(pointDataIndex, pointData)
+		 setSFromPoint(p[1], p[2], 0)
 
-   for b in all(bots) do
-      b.wait = false
+		 local point_c = getColFromPoint(p[1], p[2])
+		 add(destroyedPoints, {p[1], p[2], 0, point_c, point_b})
+
+         createParticle(p[1], p[2], point_c)
+     end
    end
 
    shake.t = 21
@@ -134,11 +294,15 @@ function getStruct()
    for j=0,127 do
 	  for i=0,127 do
 		 local col = pget(i,j)
-		 writeobj(i,j,col,1,0)
+		 --writeobj(i,j,col,1,0)
 		 if col!=0 then
 			add(struct, {i,j})
+			setSFromPoint(i,j,1)
 			if col==3 then
-			   add(botSpawnPoints, {i,j})
+				setBFromPoint(i,j,1)
+			    add(botSpawnPoints, {i,j})
+			else
+				setBFromPoint(i,j,0)
 			end
 		 end
 	  end
@@ -149,12 +313,23 @@ end
 
 
 
-function drawPoint(p)
-   local val = peek(fixind(p[1] + (p[2]*128)))
-   if band(val, 0b1000000)>0 then
-	  pset(p[1], p[2], val%16)
+--function drawPoint(p)
+--   local col = getColFromPoint(p[1], p[2])
+--   local point_s = getSFromPoint(p[1], p[2])
+--   if point_s==1 then
+--   	  pset(p[1], p[2], col)
+--   end
+--end
+
+
+function drawShip()
+   spr(3, 16, 0, 16, 16)
+   for p in all(destroyedPoints) do
+	  pset(p[1], p[2], 0)
    end
 end
+
+
 
 function drawParticles()
    for p in all(particles) do
@@ -270,10 +445,12 @@ function moveBots()
 
 		 --Collision with target
 		 if checkDist(b.x, b.y, b.t.x, b.t.y, 3) then
-			local pointAddr = fixind(b.t.x + (b.t.y*128))
-			local pointData = peek(pointAddr)
-			local pointS = shr(band(pointData, 0b1000000), 6)
-			local pointC = pointData%16
+			--local pointAddr = fixind(b.t.x + (b.t.y*128))
+			--local pointData = peek(pointAddr)
+			--local pointS = shr(band(pointData, 0b1000000), 6)
+			--local pointC = pointData%16
+			local pointS = getSFromPoint(b.t.x, b.t.y)
+			local pointC = getColFromPoint(b.t.x, b.t.y)
 
 			--Extinguish fire
 			for f in all(fires) do
@@ -283,7 +460,8 @@ function moveBots()
 			end
 
 			--reset the point status
-			setobjs(pointAddr, pointData)
+			--setobjs(pointAddr, pointData)
+			setSFromPoint(b.t.x, b.t.y, 1)
 
 			--Kill the bot
 			del(bots, b)
@@ -305,9 +483,10 @@ end
 function createFire()
    source = {x = mx, y = my, growth = 0}
    add(fires, source)
-   local pointAddr = fixind(mx + (my*128))
-   local pointData = peek(pointAddr)
-   unsetobjs(pointAddr, pointData)
+   --local pointAddr = fixind(mx + (my*128))
+   --local pointData = peek(pointAddr)
+   --unsetobjs(pointAddr, pointData)
+   setSFromPoint(mx, my, 0)               -- FIX THIS!!!!!
 end
 
 
@@ -319,12 +498,16 @@ function updateFires()
             local point = shipPoints[flr(rnd(#shipPoints)) + 1]
 			local tresh = rnd(1)+fires[k].growth
 			local d = checkDist(point.x , point.y, fires[k].x, fires[k].y, tresh)
-			local pointAddr = fixind(mx + (my*128))
-			local pointData = peek(pointAddr)
-			local point_c = pointData%16
-			local point_s = shr(band(pointData, 0b1000000), 6)
+			--local pointAddr = fixind(mx + (my*128))
+			--local pointData = peek(pointAddr)
+			--local point_c = pointData%16
+			--local point_s = shr(band(pointData, 0b1000000), 6)
+			local point_c = getColFromPoint(mx, my) -- FIX THIS!!!!
+			local point_s = getSFromPoint(mx, my) -- FIX THIS!!!!
+
             if d and point_s == 1 and point_c == 7 then
-			   unsetobjs(pointAddr, pointData)
+			   --unsetobjs(pointAddr, pointData)
+			   setSFromPoint(mx, my, 0) -- FIX THIS!!!
                createParticle(point.x, point.y, 8)
             end
          end
@@ -337,11 +520,13 @@ function selfDestruct()
    sdspeed += 50
    for i=0,sdspeed do
       point = shipPoints[flr(rnd(#shipPoints)) + 1]
-	  local pointAddr = fixind(point[1] + (point[2]*128))
-	  local pointData = peek(pointAddr)
-	  local point_s = shr(band(pointData, 0b1000000), 6)
+	  --local pointAddr = fixind(point[1] + (point[2]*128))
+	  --local pointData = peek(pointAddr)
+	  --local point_s = shr(band(pointData, 0b1000000), 6)
+	  local point_s = getSFromPoint(point[1], point[2])
 	  if point_s != 0 then
-		 unsetobjs(pointAddr, pointData)
+		 --unsetobjs(pointAddr, pointData)
+		 setSFromPoint(point[1], point[2], 0)
          if sdspeed < 250 then
             createParticle(point[1], point[2], 8)
          end
@@ -381,11 +566,13 @@ function cycleBots()
    end
 
    for p in all(botSpawnPoints) do
-      local pointAddr = fixind(p[1] + (p[2]*128))
-		local pointData = peek(pointAddr)
-		local point_c = pointData%16
-      setobjc(pointAddr, pointData, botCol)
-	   p[4] = botCol
+      --local pointAddr = fixind(p[1] + (p[2]*128))
+	  --local pointData = peek(pointAddr)
+	  --local point_c = pointData%16
+	  local point_c = getColFromPoint(p[1], p[2])
+      --setobjc(pointAddr, pointData, botCol)
+	  -- FIX THIS !!!
+	  p[4] = botCol
    end
 end
 
@@ -400,18 +587,17 @@ function createAsteroid()
    local ast = { x = 140, y = flr(rnd(128)), t = {x = flr(rnd(128)), y = flr(rnd(128))}, s = rnd(1) + 1 }
    --local ast = { x = 140, y = flr(rnd(128)), t = {x = 64, y = 50}, s = rnd(1) + 1 }
    local hit = false
-   local pointAddr = fixind(ast.t.x + (ast.t.y*128))
-   local pointData = peek(pointAddr)
-   local point_c = pointData%16
+   --local pointAddr = fixind(ast.t.x + (ast.t.y*128))
+   --local pointData = peek(pointAddr)
+   --local point_c = pointData%16
+   local point_c = getColFromPoint(ast.t.x, ast.t.y)
    if point_c != 0 then
       hit = true
    end
    if not hit then
       ast.t.x = -50
    end
-
    add(asteroids, ast)
-   
 end
 
 function drawAsteroid()
@@ -447,6 +633,7 @@ end
 
 function _init()
    poke(0x5F2D, 1)
+   memset(0x4300, 0, 0x1b00)
    mx = stat(32)
    my = stat(33)
    mb = stat(34)
@@ -489,7 +676,9 @@ end
 
 function mouseLeft()
    --selfdestruct = true
-   createAsteroid()
+   --createAsteroid()
+   destroyPoint(mx, my)
+
 end
 
 function mouseRight()
@@ -564,24 +753,19 @@ function _draw()
    --if (not btn(5)) then
       cls()
    --end
+   --foreach(shipPoints, drawPoint)
    drawStars()
+   drawShip()
    drawParticles()
-   foreach(shipPoints, drawPoint)
    if not selfdestruct then
       drawBoosters()
    end
    pset(mx, my, 8)
-   if mb == 2 then
-	  print("Mem :"..stat(0), 0,  64, 8)
-	  print("Cpu1:"..stat(1), 0,  8, 8)
-	  print("Cpu2:"..stat(2), 0, 16, 8)
-	  print("Fps :"..stat(7), 0, 24, 8)
-	  print("mx: " .. mx, 0, 32, 8)
-	  print("my: " .. my, 0, 40, 8)
-	  print("mb: " .. mb, 0, 48, 8)
-	  print("ship pixels: " .. #shipPoints, 0, 56, 8)
-	  print("asteroids: " .. #asteroids, 0, 64, 8)
-   end
+   print("Cpu1:"..stat(1), 0,  8, 8)
+   print("Cpu2:"..stat(2), 0, 16, 8)
+   print("Fps :"..stat(7), 0, 24, 8)
+   print("Mem :"..stat(0), 0,  32, 11)
+   print("ship pixels: " .. #shipPoints, 0, 56, 8)
 
    for b in all(bots) do
       pset(b.x, b.y, 11)
@@ -626,6 +810,8 @@ function findPath(start, goal)
 
 	  --Get cycle through all the neighbours
 	  local neighbours = getNeighbours(current)
+
+	  
 	  for next in all(neighbours) do
 		 local nextIndex = vectoindex(next)
 		 local new_cost = cost_so_far[vectoindex(current)] + 1
@@ -779,6 +965,34 @@ function pop(t)
    return top
 end
 
+
+-->8
+function num2hex(number)
+    local base = 16
+    local result = {}
+    local resultstr = ""
+
+    local digits = "0123456789abcdef"
+    local quotient = flr(number / base)
+    local remainder = number % base
+
+    add(result, sub(digits, remainder + 1, remainder + 1))
+
+  while (quotient > 0) do
+    local old = quotient
+    quotient /= base
+    quotient = flr(quotient)
+    remainder = old % base
+
+         add(result, sub(digits, remainder + 1, remainder + 1))
+  end
+
+  for i = #result, 1, -1 do
+    resultstr = resultstr..result[i]
+  end
+
+  return resultstr
+end
 
 
 
