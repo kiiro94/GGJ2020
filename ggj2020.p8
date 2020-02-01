@@ -259,11 +259,12 @@ end
 
 
 function createFire()
-   source = {x = mx, y = my, growth = 0}
+   source = {x = flr(rnd(128)), y = flr(rnd(128)), growth = 0}
    add(fires, source)
    for p in all(data) do
-      if p.x == source.x and p.y == source.y then
+      if p.x == source.x and p.y == source.y and p.c == 7 then
          p.s = 0
+         add(brokenData, p)
       end
    end
 end
@@ -272,12 +273,13 @@ function updateFires()
    if #fires > 0 then
       for k=1,#fires do
          fire = flr(rnd(#fires)) + 1
-         fires[k].growth += 0.02
-         for i=0,30 do
+         fires[k].growth += 0.01
+         for i=0,15 do
             point = flr(rnd(5207)) + 1
             dist = sqrt((data[point].x - fires[k].x)^2 + (data[point].y - fires[k].y)^2)
-            if dist < rnd(1)+fires[k].growth and data[point].s == 1 and data[point].c == 7 then
+            if dist < rnd(1)+fires[k].growth and data[point].s == 1 and data[point].c == 7 and data[point].s == 1 then
                data[point].s = 0
+               add(brokenData, data[point])
                createParticle(data[point].x, data[point].y, 8)
                
                for b in all(bots) do
@@ -296,10 +298,12 @@ function selfDestruct()
    for i=0,sdspeed do
       point = flr(rnd(5207)) + 1
 
-      if (data[point].s != 0) then
+      if (data[point].s != 0) and not gameover then
          data[point].s = 0
          if sdspeed < 250 then
             createParticle(data[point].x, data[point].y, 8)
+         elseif sdspeed > 2000 then
+            gameover = true
          end
       end
    end
@@ -396,6 +400,16 @@ function updateAsteroid()
    end
 end
 
+function drawGameOver()
+   if gameover then
+      rectfill(64-goan, 60, 64+goan, 65, 8)
+      goan += 5
+      if t % 8 != 0 then
+         print("GAME OVER", 45, 60, 0)
+      end
+   end
+end
+
 --------------------------------
 
 
@@ -428,6 +442,9 @@ function _init()
    hp = maxhp
 
    asteroids = {}
+
+   gameover = false
+   goan = 0
 end
 
 
@@ -464,9 +481,13 @@ function _update60()
       updateLaserone()
    end
 
-   if  t % 100 == 0 and !selfdestruct then
+   if  t % 150 == 0 and not selfdestruct then
       createAsteroid()
    end 
+
+   if t % 200 == 0 and not selfdestruct then
+      createFire()
+   end
 
    updateAsteroid()
 
@@ -507,11 +528,13 @@ function _draw()
       drawLaserone()
    end
 
-   if (!selfdestruct) then
+   if (not selfdestruct) then
       drawHpBar()
    end
 
    drawAsteroid()
+
+   drawGameOver()
 end
 
 
