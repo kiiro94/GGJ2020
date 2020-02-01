@@ -10,21 +10,53 @@ printh("---------------------")
 --Screen from 0 to 127
 --Data   from 1 to 128
 
-function makePoint(x, y, col)
-   return {
-	  x = x,
-	  y = y,
-	  s = 1,
-	  c = col
-   }
+
+------------------------------------------
+-------------MEMORY STUFF-----------------
+------------------------------------------
+
+function fixind(ind)
+   if ind<=9472 then
+	  return 2815+ind
+   else
+	  return 17152+(ind-9472)
+   end
 end
 
+function writeobj(x,y,c,s,b)
+   local ind = fixind(x + (y*128))
+   local val = c+1*64+0*128
+   poke(ind, val)
+   --printh("writing "..val.." at 0x"..num2hex(fixind(ind)))
+end
+
+
+
+--function readobj(x,y)
+--   local val = peek(fixind(x + (y*128)))
+--   return {
+--	  x=x,--x=ind%128,
+--	  y=y,--y=flr(ind/128),
+--	  c=val%16,
+--	  s=shr(band(val, 0b1000000), 6),
+--	  b=shr(band(val, 0b10000000), 7)
+--   }
+--end
+
+
+
+------------------------------------------
+-------------MEMORY STUFF-----------------
+------------------------------------------
+
+
+
 function destroyPoint(x,y)
-   for p in all(data) do
-     dist = sqrt((p.x - x)^2 + (p.y - y)^2)
+   for p in all(shipPoints) do
+	  local dist = sqrt((p.x - x)^2 + (p.y - y)^2)
 	  if dist < rnd(5)+5 and p.s == 1 then
 		 p.s = 0
-       createParticle(p.x, p.y, p.c)
+		 createParticle(p.x, p.y, p.c)
 	  end
    end
 
@@ -36,7 +68,7 @@ function destroyPoint(x,y)
 end
 
 function recreateEveryPoint()
-   for p in all(data) do	
+   for p in all(shipPoints) do	
 		p.s = 1
 	end
 end
@@ -52,26 +84,38 @@ function getStruct()
    struct = {}
    for j=0,127 do
 	  for i=0,127 do
-       pt = pget(i,j)
-		 if pt!=0 then
-			add(struct, makePoint(i, j, pt))
-		 end
+       local col = pget(i,j)
+
+	   writeobj(i,j,col,1,0)
+
+	   --local index = maptoindex(i, j)
+	   --pt = makePoint(i, j, col)
+	   --if col!=0 then
+	   --	  add(struct, pt)
+	   --end
+
+	   if col!=0 then
+		  add(struct, {i,j})
+	   end
+
+	   --add(dataIndexed, pt)
 	  end
    end
    cls()
    return struct
 end
 
+
+
 function drawPoint(p)
-   if p.s==1 then
-	   pset(p.x, p.y, p.c)
-   --elseif p.s==2 then
-      --pset(p.x, p.y, 14)
+   local val = peek(fixind(p[1] + (p[2]*128)))
+   if band(val, 0b1000000)>0 then
+	  pset(p[1], p[2], val%16)
    end
 end
 
 function drawStruct()
-   foreach(data, drawPoint)
+   foreach(shipPoints, drawPoint)
 end
 
 function drawParticles()
@@ -167,17 +211,17 @@ function createBots()
 end
 
 function searchTarget(b)
-   pivot = flr(rnd(5206))
-   for i=pivot,5207 do
-      if data[i].s == 0 then
-         data[i].s = 2
-         return { x = data[i].x, y = data[i].y }
+   local pivot = flr(rnd(#shipPoints))
+   for i=pivot,#shipPoints do
+      if shipPoints[i].s == 0 then
+         shipPoints[i].s = 2
+         return { x = shipPoints[i].x, y = shipPoints[i].y }
       end
    end
    for i=1,pivot do
-      if data[i].s == 0 then
-         data[i].s = 2
-         return { x = data[i].x, y = data[i].y }
+      if shipPoints[i].s == 0 then
+         shipPoints[i].s = 2
+         return { x = shipPoints[i].x, y = shipPoints[i].y }
       end
    end
    
@@ -199,9 +243,9 @@ function moveBots()
          if b.y < b.t.y then b.y += b.s
          elseif b.y > b.t.y then b.y -= b.s end
 
-         dist = sqrt((b.x - b.t.x)^2 + (b.y - b.t.y)^2)
+         local dist = sqrt((b.x - b.t.x)^2 + (b.y - b.t.y)^2)
          if (dist < 2) then
-            for p in all(data) do
+            for p in all(shipPoints) do
                if (b.t.x == p.x and b.t.y == p.y) do
                   p.s = 1
                   del(bots, b)
@@ -216,7 +260,7 @@ end
 function createFire()
    source = {x = mx, y = my, growth = 0}
    add(fires, source)
-   for p in all(data) do
+   for p in all(shipPoints) do
       if p.x == source.x and p.y == source.y then
          p.s = 0
       end
@@ -226,14 +270,14 @@ end
 function updateFires()
    if #fires > 0 then
       for k=1,#fires do
-         fire = flr(rnd(#fires)) + 1
+         local fire = flr(rnd(#fires)) + 1
          fires[k].growth += 0.02
          for i=0,30 do
-            point = flr(rnd(5207)) + 1
-            dist = sqrt((data[point].x - fires[k].x)^2 + (data[point].y - fires[k].y)^2)
-            if dist < rnd(1)+fires[k].growth and data[point].s == 1 then
-               data[point].s = 0
-               createParticle(data[point].x, data[point].y, 8)
+            local point = flr(rnd(#shipPoints)) + 1
+            local dist = sqrt((shipPoints[point].x - fires[k].x)^2 + (shipPoints[point].y - fires[k].y)^2)
+            if dist < rnd(1)+fires[k].growth and shipPoints[point].s == 1 then
+               shipPoints[point].s = 0
+               createParticle(shipPoints[point].x, shipPoints[point].y, 8)
                
                for b in all(bots) do
                   b.wait = false
@@ -249,12 +293,12 @@ function selfDestruct()
    sdspeed += 50
 
    for i=0,sdspeed do
-      point = flr(rnd(5207)) + 1
+      point = flr(rnd(#shipPoints)) + 1
 
-      if (data[point].s != 0) then
-         data[point].s = 0
+      if (shipPoints[point].s != 0) then
+         shipPoints[point].s = 0
          if sdspeed < 250 then
-            createParticle(data[point].x, data[point].y, 8)
+            createParticle(shipPoints[point].x, shipPoints[point].y, 8)
          end
       end
    end
@@ -267,13 +311,15 @@ end
 
 function _init()
    poke(0x5F2D, 1)
-	mx = stat(32)
-	my = stat(33)
-	mb = stat(34)
-	data = getStruct()
-	t = 0
-	pset(127,0,8)
+   mx = stat(32)
+   my = stat(33)
+   mb = stat(34)
+   --dataIndexed = {}
+   shipPoints = getStruct()
 
+
+
+   t=0
    particles = {}
    stars = createStars()
 
@@ -285,6 +331,13 @@ function _init()
 
    sdspeed = 1
    selfdestruct = false
+
+   printh("--- start to find path")
+   --findPath({64, 64}, {60, 30})
+   --index = maptoindex(64,64)
+   --pt = dataIndexed[index]
+   --printh("TEST: " .. pt.x .. ", " .. pt.y)
+
 end
 
 
@@ -307,8 +360,8 @@ end
 
 
 function _update()
-	mx = stat(32)
-	my = stat(33)
+   mx = stat(32)
+   my = stat(33)
 
    camera(0 + shake.x, 0 + shake.y)
    screenShake()
@@ -366,7 +419,7 @@ function _draw()
 	  print("mx: " .. mx, 0, 32, 8)
 	  print("my: " .. my, 0, 40, 8)
 	  print("mb: " .. mb, 0, 48, 8)
-     print("ship pixels: " .. #data, 0, 56, 8)
+     print("ship pixels: " .. #shipPoints, 0, 56, 8)
    end
 
    for b in all(bots) do
@@ -386,9 +439,6 @@ end
 
 -->8
 --pathfinding
-
-
-
 
 function findPath(start, goal)
    wallCol = 2
@@ -474,7 +524,7 @@ function getNeighbours(pos)
 
 
    if x>0 and x<128 and y>0 and y<128 then
-	  for p in all(data) do
+	  for p in all(shipPoints) do
 		 if p.c!=2 then
 			if     (p.x==x-1 and p.y==y) then add(neighbours, {x-1,y})
 		    elseif (p.x==x+1 and p.y==y) then add(neighbours, {x+1,y})
@@ -543,10 +593,10 @@ function vectoindex(vec)
    return maptoindex(vec[1],vec[2])
 end
 function maptoindex(x, y)
-   return ((x+1) * 16) + y
+   return ((x+1) * 128) + y
 end
 function indextomap(index)
-   local x = (index-1)/16
+   local x = (index-1)/128
    local y = index - (x*w)
    return {x,y}
 end

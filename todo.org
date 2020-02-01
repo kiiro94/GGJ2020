@@ -1,0 +1,53 @@
+* todo
+** Laseroni che spaccano a linee
+** effetto vhs
+** select tipo bots
+** sostituire pitagora con manhattan
+   
+
+peek()  -> 8 bit  = INT 0-255
+peek2() -> 16 bit
+
+points = 128x128 = 16384 byte = 16 kb
+
+x -> 1byte
+y -> 1byte
+s -> 1byte
+
+
+0-32767 -> memory space
+
+
+2048kb memory -> 
+
+
+
+
+
+0x0fff     0x0000	0x0fff	Sprite sheet (0-127)   
+0x0fff     0x1000	0x1fff	Sprite sheet (128-255) / Map (rows 32-63) (shared)
+0x0fff     0x2000	0x2fff	Map (rows 0-31)
+           0x3000	0x30ff	Sprite flags
+           0x3100	0x31ff	Music
+           0x3200	0x42ff	Sound effects
+0x1aff     0x4300	0x5dff	General use (or work RAM)
+           0x5e00	0x5eff	Persistent cart data (64 numbers = 256 bytes)
+           0x5f00	0x5f3f	Draw state
+           0x5f40	0x5f7f	Hardware state
+           0x5f80	0x5fff	GPIO pins (128 bytes)
+           0x6000	0x7fff	Screen data (8k)
+
+
+
+
+		   0x0aff -> 0x2fff    0x4300 -> 0x5dff
+		   2815   -> 12287     17152  -> 24063
+		         9472                6911
+				            
+
+
+
+
+
+
+
