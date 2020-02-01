@@ -26,6 +26,7 @@ function destroyPoint(x,y)
 		 p.s = 0
        add(brokenData, p)
        createParticle(p.x, p.y, p.c)
+       updateHp()
 	  end
    end
 
@@ -44,19 +45,25 @@ end
 
 function createParticle(x, y, c)
    add(particles, {x = x, y = y, c = c, sx = rnd(5)+1, sy = rnd(2)-1})
-
-   --decrease hp bar relative to color destroyed
-   if     c == 13 then hp -= 2
-   elseif c == 2 then hp -= 2
-   elseif c == 7 then hp -= 1
-   elseif c == 6 then hp -= 2
-   elseif c == 8 then hp -= 13
-   elseif c == 9 then hp -= 7
-   end
 end
 
 function createBoosterParticle(x, y, c)
    add(particles, {x = x, y = y, c = c, sx = rnd(5)+1, sy = rnd(2)-1})
+end
+
+function updateHp()
+   sum = 0
+   for bP in all(brokenData) do
+      --decrease hp bar relative to color destroyed
+      if     bP.c == 13 then sum += 2
+      elseif bP.c == 2 then sum += 2
+      elseif bP.c == 7 then sum += 1
+      elseif bP.c == 6 then sum += 2
+      elseif bP.c == 8 then sum += 13
+      elseif bP.c == 9 then sum += 7
+      end
+   end
+   hp = maxhp - sum
 end
 
 
@@ -242,14 +249,7 @@ function moveBots()
                   end
                   del(bots, b)
 
-                  --increase hp bar relative to color repaired
-                  if     p.c == 13 then hp += 2
-                  elseif p.c == 2 then hp += 2
-                  elseif p.c == 7 then hp += 1
-                  elseif p.c == 6 then hp += 2
-                  elseif p.c == 8 then hp += 13
-                  elseif p.c == 9 then hp += 7
-                  end
+                  updateHp()
                end
             end
          end
@@ -281,10 +281,7 @@ function updateFires()
                data[point].s = 0
                add(brokenData, data[point])
                createParticle(data[point].x, data[point].y, 8)
-               
-               for b in all(bots) do
-                  b.wait = false
-               end
+               updateHp()
             end
          end
       end
@@ -438,7 +435,7 @@ function _init()
 
    botCol = 3
 
-   maxhp = 1000
+   maxhp = 1500
    hp = maxhp
 
    asteroids = {}
@@ -485,7 +482,7 @@ function _update60()
       createAsteroid()
    end 
 
-   if t % 200 == 0 and not selfdestruct then
+   if t % 800 == 0 and not selfdestruct then
       createFire()
    end
 
