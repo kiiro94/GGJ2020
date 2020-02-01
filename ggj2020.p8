@@ -27,6 +27,8 @@ function destroyPoint(x,y)
        createParticle(p.x, p.y, p.c)
 	  end
    end
+
+   shake.t = 21
 end
 
 function recreateEveryPoint()
@@ -58,7 +60,7 @@ end
 
 function drawPoint(p)
    if p.s==1 then
-	  pset(p.x, p.y, p.c)
+	   pset(p.x, p.y, p.c)
    end
 end
 
@@ -137,13 +139,26 @@ function createBoosterParticles()
    --end
 end
 
+function screenShake()
+   if shake.t > 0 then
+      if shake.t % 2 == 0 then
+         shake.x += rnd(3) - 1.5
+         shake.y += rnd(3) - 1.5
+      else
+         shake.x = 0
+         shake.y = 0
+      end
+      shake.t -= 1
+   end
+end
+
 --------------------------------
 
 
 
 
 function _init()
-    poke(0x5F2D, 1)
+   poke(0x5F2D, 1)
 	mx = stat(32)
 	my = stat(33)
 	mb = stat(34)
@@ -153,6 +168,8 @@ function _init()
 
    particles = {}
    stars = createStars()
+
+   shake = { x = 0, y = 0, t = 0}
 end
 
 
@@ -164,10 +181,15 @@ function mouseRight()
    recreateEveryPoint()
 end
 
+
+
+
 function _update()
 	mx = stat(32)
 	my = stat(33)
 
+   camera(0 + shake.x, 0 + shake.y)
+   screenShake()
 
 	if mb==0 then
 		mb = stat(34)
