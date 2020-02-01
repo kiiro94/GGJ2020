@@ -207,6 +207,11 @@ function moveBots()
          if (dist < 2) then
             for p in all(data) do
                if (b.t.x == p.x and b.t.y == p.y) do
+                  for f in all(fires) do
+                     if f.x == p.x and f.y == p.y then
+                        del(fires, f)
+                     end
+                  end
                   p.s = 1
                   del(bots, b)
                end
@@ -235,7 +240,7 @@ function updateFires()
          for i=0,30 do
             point = flr(rnd(5207)) + 1
             dist = sqrt((data[point].x - fires[k].x)^2 + (data[point].y - fires[k].y)^2)
-            if dist < rnd(1)+fires[k].growth and data[point].s == 1 then
+            if dist < rnd(1)+fires[k].growth and data[point].s == 1 and data[point].c == 7 then
                data[point].s = 0
                createParticle(data[point].x, data[point].y, 8)
                
