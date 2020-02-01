@@ -3,6 +3,9 @@
 ** effetto vhs
 ** select tipo bots
 ** sostituire pitagora con manhattan
+** frecce
+** spawn fire
+** asteroidi devono schivare zona centrale
    
 
 peek()  -> 8 bit  = INT 0-255

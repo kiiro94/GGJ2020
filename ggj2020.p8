@@ -4,9 +4,6 @@ __lua__
 --main
 
 
-printh("---------------------")
-
-
 --Screen from 0 to 127
 --Data   from 1 to 128
 
@@ -23,12 +20,25 @@ function fixind(ind)
    end
 end
 
+
+
 function writeobj(x,y,c,s,b)
-   local ind = fixind(x + (y*128))
-   local val = c+1*64+0*128
-   poke(ind, val)
+   b=0
+   if (col==3) b=1 
+   poke(fixind(x + (y*128)), c+s*64+b*128)
    --printh("writing "..val.." at 0x"..num2hex(fixind(ind)))
 end
+
+function setobjs(addr, val)
+   poke(addr, bor(0b1000000, val))
+end
+
+function unsetobjs(addr, val)
+   poke(addr, bxor(0b1000000, val))
+end
+
+
+
 
 
 
@@ -44,19 +54,32 @@ end
 --end
 
 
+function checkDist(x1, y1, x2, y2, treshold)
+   return (sqrt((x1 - x2)^2 + (y1 - y2)^2) < treshold)
+end
 
-------------------------------------------
--------------MEMORY STUFF-----------------
-------------------------------------------
 
+function pointsInBox(x,y,w,h)
+   local points = {}
+   for j=y-h/2,y+h/2 do	
+	  for i=x-w/2,x+w/2 do	
+		 add(points, {i,j})
+	  end
+   end
+   return points
+end
 
 
 function destroyPoint(x,y)
-   for p in all(shipPoints) do
-	  local dist = sqrt((p.x - x)^2 + (p.y - y)^2)
-	  if dist < rnd(5)+5 and p.s == 1 then
-		 p.s = 0
-		 createParticle(p.x, p.y, p.c)
+   local checkBox = pointsInBox(x, y, 10, 10)
+   for p in all(checkBox) do
+	  local pointDataIndex = fixind(p.x + (p.y*128))
+	  local pointData = peek(pointDataIndex)
+	  local point_s = shr(band(val, 0b1000000), 6)
+	  if checkDist(p.x, x, p.y, y, 5+rand(5)) and point_s == 1 then
+		 unsetobjs(pointDataIndex, pointData)
+		 add(destroyedPoints, {p.x, p.y, 0})
+		 createParticle(p.x, p.y, pointData%16)
 	  end
    end
 
@@ -67,13 +90,22 @@ function destroyPoint(x,y)
    shake.t = 21
 end
 
-function recreateEveryPoint()
-   for p in all(shipPoints) do	
-		p.s = 1
-	end
-end
+
 
 function createParticle(x, y, c)
+   add(particles, {x = x, y = y, c = c, sx = rnd(5)+1, sy = rnd(2)-1})
+
+   --decrease hp bar relative to color destroyed
+   if     c == 13 then hp -= 2
+   elseif c == 2 then hp -= 2
+   elseif c == 7 then hp -= 1
+   elseif c == 6 then hp -= 2
+   elseif c == 8 then hp -= 13
+   elseif c == 9 then hp -= 7
+   end
+end
+
+function createBoosterParticle(x, y, c)
    add(particles, {x = x, y = y, c = c, sx = rnd(5)+1, sy = rnd(2)-1})
 end
 
@@ -84,21 +116,14 @@ function getStruct()
    struct = {}
    for j=0,127 do
 	  for i=0,127 do
-       local col = pget(i,j)
-
-	   writeobj(i,j,col,1,0)
-
-	   --local index = maptoindex(i, j)
-	   --pt = makePoint(i, j, col)
-	   --if col!=0 then
-	   --	  add(struct, pt)
-	   --end
-
-	   if col!=0 then
-		  add(struct, {i,j})
-	   end
-
-	   --add(dataIndexed, pt)
+		 local col = pget(i,j)
+		 writeobj(i,j,col,1,0)
+		 if col!=0 then
+			add(struct, {i,j})
+			if col==3 then
+			   add(botSpawnPoints, {i,j}	
+			end
+		 end
 	  end
    end
    cls()
@@ -114,10 +139,6 @@ function drawPoint(p)
    end
 end
 
-function drawStruct()
-   foreach(shipPoints, drawPoint)
-end
-
 function drawParticles()
    for p in all(particles) do
       pset(p.x, p.y, p.c)
@@ -128,25 +149,10 @@ function animateParticles()
    for p in all(particles) do
       p.x -= p.sx
       p.y += p.sy
-
-      if (p.x < 0) then
-         del(particles, p)
-      end
+      if (p.x < 0) del(particles, p) 
    end
 end
 
-
-function printData()
-   for j=1,32 do
-	  s = ""
-	  for i=1,128 do
-		 s1 = "0"
-		 if (data[j][i]==6) s1 = "."
-		 s = s .. s1
-	  end
-	  printh(s)
-   end
-end
 
 function createStars()
    s = {}
@@ -184,8 +190,8 @@ end
 
 function createBoosterParticles()
    --if t % 1 == 0 then
-      createParticle(16, 40, 9)
-      createParticle(16, 88, 9)
+      createBoosterParticle(16, 40, 9)
+      createBoosterParticle(16, 88, 9)
    --end
 end
 
@@ -205,54 +211,75 @@ end
 
 function createBots()
    if #bots < 20 then
-      add(bots, {x = mx, y = my, s = rnd(0.5) + 1, t = nil, wait = false})
-      add(bots, {x = mx, y = my, s = rnd(0.5) + 1, t = nil, wait = false})
+      add(bots, {x = 51, y = 63, s = rnd(0.5) + 1, t_ind=0, t = nil, wait = false})
+      add(bots, {x = 51, y = 64, s = rnd(0.5) + 1, t_ind=0, t = nil, wait = false})
    end
 end
 
-function searchTarget(b)
-   local pivot = flr(rnd(#shipPoints))
-   for i=pivot,#shipPoints do
-      if shipPoints[i].s == 0 then
-         shipPoints[i].s = 2
-         return { x = shipPoints[i].x, y = shipPoints[i].y }
-      end
+
+
+
+function searchTarget()
+   if #destroyedPoints > 0 then 
+	  for p in all(destroyedPoints) do
+		 if p[3]==0 then
+			p[3] = 1
+			return { x = randPoint.x, y = randPoint.y }
+		 end
+	  end
    end
-   for i=1,pivot do
-      if shipPoints[i].s == 0 then
-         shipPoints[i].s = 2
-         return { x = shipPoints[i].x, y = shipPoints[i].y }
-      end
-   end
-   
-   b.wait = true
    return nil
 end
 
 
+
+
+
+
+
 function moveBots()
    for b in all(bots) do
-      if b.t == nil and not b.wait then
-         b.t = searchTarget(b)
-      end
-      
-
-      if (b.t != nil) then
-         if b.x < b.t.x then b.x += b.s
+      if b.t == nil then
+		 --find target
+         b.t = searchTarget()
+		 if (b.t==nil) del(bots, b)
+	  else
+		 --move towards the target
+		 if b.x < b.t.x then b.x += b.s
          elseif b.x > b.t.x then b.x -= b.s end
          if b.y < b.t.y then b.y += b.s
          elseif b.y > b.t.y then b.y -= b.s end
 
-         local dist = sqrt((b.x - b.t.x)^2 + (b.y - b.t.y)^2)
-         if (dist < 2) then
-            for p in all(shipPoints) do
-               if (b.t.x == p.x and b.t.y == p.y) do
-                  p.s = 1
-                  del(bots, b)
-               end
-            end
-         end
-      end
+
+		 --Collision with target
+		 if checkDist(b.x, b.y, b.t.x, b.t.y, 2) then
+			local pointAddr = fixind(b.t.x + (b.t.y*128))
+			local pointData = peek(pointAddr)
+			local pointS = shr(band(val, 0b1000000), 6)
+
+			--Extinguish fire
+			for f in all(fires) do
+			   if f.x == p.x and f.y == p.y then
+				  del(fires, f)
+			   end
+			end
+
+			--reset the point status
+			setobjs(pointAddr, pointData)
+
+			--Kill the bot
+			del(bots, b)
+
+			--increase hp bar relative to color repaired
+			if     p.c == 13 then hp += 2
+			elseif p.c ==  2 then hp += 2
+			elseif p.c ==  7 then hp += 1
+			elseif p.c ==  6 then hp += 2
+			elseif p.c ==  8 then hp += 13
+			elseif p.c ==  9 then hp += 7
+			end
+		 end
+	  end
    end
 end
 
@@ -260,28 +287,27 @@ end
 function createFire()
    source = {x = mx, y = my, growth = 0}
    add(fires, source)
-   for p in all(shipPoints) do
-      if p.x == source.x and p.y == source.y then
-         p.s = 0
-      end
-   end
+   local pointAddr = fixind(mx + (my*128))
+   local pointData = peek(pointAddr)
+   unsetobjs(pointAddr, pointData)
 end
+
 
 function updateFires()
    if #fires > 0 then
       for k=1,#fires do
-         local fire = flr(rnd(#fires)) + 1
          fires[k].growth += 0.02
          for i=0,30 do
-            local point = flr(rnd(#shipPoints)) + 1
-            local dist = sqrt((shipPoints[point].x - fires[k].x)^2 + (shipPoints[point].y - fires[k].y)^2)
-            if dist < rnd(1)+fires[k].growth and shipPoints[point].s == 1 then
-               shipPoints[point].s = 0
-               createParticle(shipPoints[point].x, shipPoints[point].y, 8)
-               
-               for b in all(bots) do
-                  b.wait = false
-               end
+            local point = shipPoints[flr(rnd(#shipPoints)) + 1]
+			local tresh = rnd(1)+fires[k].growth
+			local d = checkDist(point.x , point.y, fires[k].x, fires[k].y, tresh)
+			local pointAddr = fixind(mx + (my*128))
+			local pointData = peek(pointAddr)
+			local point_c = val%16
+			local point_s = s=shr(band(val, 0b1000000), 6),
+            if d and point_s == 1 and point_c == 7 then
+			   unsetobjs(pointAddr, pointData)
+               createParticle(point.x, point.y, 8)
             end
          end
       end
@@ -291,14 +317,100 @@ end
 
 function selfDestruct()
    sdspeed += 50
-
    for i=0,sdspeed do
       point = flr(rnd(#shipPoints)) + 1
-
-      if (shipPoints[point].s != 0) then
-         shipPoints[point].s = 0
+	  local pointAddr = fixind(mx + (my*128))
+	  local pointData = peek(pointAddr)
+	  local point_s = s=shr(band(val, 0b1000000), 6),
+	  if point_s != 0 then
+		 unsetobjs(pointAddr, pointData)
          if sdspeed < 250 then
             createParticle(shipPoints[point].x, shipPoints[point].y, 8)
+         end
+	  end
+   end
+end
+
+
+function createLaserone()
+   laserone = {y = my, g = 0}
+end
+
+function drawLaserone()
+   line(0, laserone.y, laserone.g, laserone.y, 11)
+   line(0, laserone.y + 1, laserone.g, laserone.y + 1, 11)
+end
+
+function updateLaserone()
+   laserone.g += 2
+   for p in all(shipPoints) do
+      if (p.x == laserone.g + 2 and p.y == laserone.y + flr(rnd(2)) - 1) then
+         p.s = 0
+         createParticle(p.x, p.y, p.c)
+      end
+   end
+   if laserone.g > 128 then
+      laserone = nil
+   end
+end
+
+
+function cycleBots()
+   if botCol != 15 then
+      botCol += 1
+   else
+      botCol = 0
+   end
+
+   for p in all(botSpawnPoints) do
+	  p.c = botCol
+   end
+end
+
+
+function drawHpBar()
+   rectfill(0, 0, (hp/maxhp)*128, 4, 13)
+   print(hp .. "/" .. maxhp, 49, 0, 7)
+end
+
+
+function createAsteroid()
+   local ast = { x = 140, y = flr(rnd(128)), t = {x = flr(rnd(128)), y = flr(rnd(128))}, s = rnd(1) + 1 }
+   local hit = false
+   for p in all(shipPoints) do
+      if p.x == ast.t.x and p.y == ast.t.y then
+         hit = true
+      end
+   end
+   if not hit then
+      ast.t.x = -50
+   end
+
+   add(asteroids, ast)
+   
+end
+
+function drawAsteroid()
+   for a in all(asteroids) do
+      --circfill(a.x+1, a.y+1, 3, 10)
+      circfill(a.x, a.y, 3, 5)
+   end
+end
+
+function updateAsteroid()
+   for a in all(asteroids) do
+      if a.x <= -10 or a.y > 138 then
+         del(asteroids, a)
+      else
+         local angle = atan2(a.t.x - a.x, a.t.y - a.y)
+         a.x = a.x + a.s * cos(angle)
+         a.y = a.y + a.s * sin(angle)
+      
+         dist = abs(a.x - a.t.x) + abs(a.y - a.t.y)
+         if dist < 2 then
+            destroyPoint(a.t.x, a.t.y)
+            del(asteroids, a)
+            break
          end
       end
    end
@@ -315,6 +427,8 @@ function _init()
    my = stat(33)
    mb = stat(34)
    --dataIndexed = {}
+   botSpawnPoints = {}
+   destroyedPoints = {}
    shipPoints = getStruct()
 
 
@@ -338,22 +452,28 @@ function _init()
    --pt = dataIndexed[index]
    --printh("TEST: " .. pt.x .. ", " .. pt.y)
 
+   laserone = nil
+
+   botCol = 3
+
+   maxhp = 1000
+   hp = maxhp
+
+   asteroids = {}
 end
 
 
 function mouseLeft()
-   if pget(mx-1, my) == 3 then
-      createBots()
-   end
+   --selfdestruct = true
+   createAsteroid()
 end
 
 function mouseRight()
-   destroyPoint(mx, my)
+   --destroyPoint(mx, my)
 end
 
 function mouseMiddle()
    createFire()
-   --recreateEveryPoint()
 end
 
 
@@ -392,10 +512,24 @@ function _update()
    updateFires()
 
    if btnp(4) then
-      selfdestruct = true
+      createBots()
+   elseif btnp(5) then
+      cycleBots()
+   end
+   if selfdestruct and sdspeed < 2500 then selfDestruct() end
+
+   if (btnp(0)) then
+      createLaserone()
+   end
+   if laserone != nil then
+      updateLaserone()
    end
 
-   if selfdestruct and sdspeed < 2500 then selfDestruct() end
+   if  t % 100 == 0 then
+      createAsteroid()
+   end 
+
+   updateAsteroid()
 end
 
 
@@ -403,28 +537,39 @@ end
 
 
 function _draw()
-   cls()
+   --if (not btn(5)) then
+      cls()
+   --end
    drawStars()
    drawParticles()
-   drawStruct()
+   foreach(shipPoints, drawPoint)
    if not selfdestruct then
       drawBoosters()
    end
    pset(mx, my, 8)
-   if btn(5) then
-	  print("Mem :"..stat(0), 0,  0, 8)
+   if mb == 2 then
+	  print("Mem :"..stat(0), 0,  64, 8)
 	  print("Cpu1:"..stat(1), 0,  8, 8)
 	  print("Cpu2:"..stat(2), 0, 16, 8)
 	  print("Fps :"..stat(7), 0, 24, 8)
 	  print("mx: " .. mx, 0, 32, 8)
 	  print("my: " .. my, 0, 40, 8)
 	  print("mb: " .. mb, 0, 48, 8)
-     print("ship pixels: " .. #shipPoints, 0, 56, 8)
+	  print("ship pixels: " .. #shipPoints, 0, 56, 8)
+	  print("asteroids: " .. #asteroids, 0, 64, 8)
    end
 
    for b in all(bots) do
       pset(b.x, b.y, 11)
    end
+
+   if (laserone != nil) then
+      drawLaserone()
+   end
+
+   drawHpBar()
+
+   drawAsteroid()
 
    --for f in all(fires) do
       --pset(f.x, f.y, 13)
