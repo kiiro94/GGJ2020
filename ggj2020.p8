@@ -271,19 +271,25 @@ end
 
 function createParticle(x, y, c)
    add(particles, {x = x, y = y, c = c, sx = rnd(5)+1, sy = rnd(2)-1})
-
-   --decrease hp bar relative to color destroyed
-   if     c == 13 then hp -= 2
-   elseif c == 2 then hp -= 2
-   elseif c == 7 then hp -= 1
-   elseif c == 6 then hp -= 2
-   elseif c == 8 then hp -= 13
-   elseif c == 9 then hp -= 7
-   end
 end
 
 function createBoosterParticle(x, y, c)
    add(particles, {x = x, y = y, c = c, sx = rnd(5)+1, sy = rnd(2)-1})
+end
+
+function updateHp()
+   sum = 0
+   for bP in all(brokenData) do
+      --decrease hp bar relative to color destroyed
+      if     bP.c == 13 then sum += 2
+      elseif bP.c == 2 then sum += 2
+      elseif bP.c == 7 then sum += 1
+      elseif bP.c == 6 then sum += 2
+      elseif bP.c == 8 then sum += 13
+      elseif bP.c == 9 then sum += 7
+      end
+   end
+   hp = maxhp - sum
 end
 
 
@@ -311,17 +317,15 @@ function getStruct()
    return struct
 end
 
-
-
---function drawPoint(p)
---   local col = getColFromPoint(p[1], p[2])
---   local point_s = getSFromPoint(p[1], p[2])
---   if point_s==1 then
---   	  pset(p[1], p[2], col)
---   end
---end
-
-
+function getBotSpawn()
+   bS = {}
+   for p in all(data) do 
+      if p.b == 1 then
+         add(bS, p)
+      end
+   end
+   return bS
+end
 function drawShip()
    spr(3, 16, 0, 16, 16)
    for p in all(destroyedPoints) do
@@ -329,8 +333,13 @@ function drawShip()
    end
 end
 
+function drawStruct()
+   foreach(data, drawPoint)
+end
 
-
+function drawBotSpawn()
+   foreach(botSpawn, drawPoint)
+end
 function drawParticles()
    for p in all(particles) do
       pset(p.x, p.y, p.c)
@@ -476,6 +485,7 @@ function moveBots()
 			elseif pointC ==  8 then hp += 13
 			elseif pointC ==  9 then hp += 7
 			end
+                  updateHp()
 		 end
 	  end
    end
@@ -483,7 +493,7 @@ end
 
 
 function createFire()
-   source = {x = mx, y = my, growth = 0}
+   source = {x = flr(rnd(128)), y = flr(rnd(128)), growth = 0}
    add(fires, source)
    --local pointAddr = fixind(mx + (my*128))
    --local pointData = peek(pointAddr)
@@ -511,6 +521,7 @@ function updateFires()
 			   --unsetobjs(pointAddr, pointData)
 			   setSFromPoint(mx, my, 0) -- FIX THIS!!!
                createParticle(point.x, point.y, 8)
+               updateHp()
             end
          end
       end
@@ -531,6 +542,8 @@ function selfDestruct()
 		 setSFromPoint(point[1], point[2], 0)
          if sdspeed < 250 then
             createParticle(point[1], point[2], 8)
+         elseif sdspeed > 2000 then
+            gameover = true
          end
 	  end
    end
@@ -639,6 +652,16 @@ function updateAsteroid()
    end
 end
 
+function drawGameOver()
+   if gameover then
+      rectfill(64-goan, 60, 64+goan, 65, 8)
+      goan += 5
+      if t % 8 != 0 then
+         print("GAME OVER", 45, 60, 0)
+      end
+   end
+end
+
 --------------------------------
 
 
@@ -680,48 +703,27 @@ function _init()
 
    botCol = 3
 
-   maxhp = 1000
+   maxhp = 1500
    hp = maxhp
 
    asteroids = {}
+
+   gameover = false
+   goan = 0
 end
 
-
-function mouseLeft()
-   --selfdestruct = true
-   --createAsteroid()
-   destroyPoint(mx, my)
-end
-
-function mouseRight()
-   --destroyPoint(mx, my)
-end
 
 function mouseMiddle()
    createFire()
 end
 
 
-
-
-function _update()
+function _update60()
    mx = stat(32)
    my = stat(33)
 
    camera(0 + shake.x, 0 + shake.y)
    screenShake()
-
-	if mb==0 then
-		mb = stat(34)
-		if mb==1 then
-		   mouseLeft()
-      elseif mb==2 then
-         mouseRight()
-      elseif mb==4 then
-         mouseMiddle()
-      end
-	end
-	mb = stat(34)
 
    t += 1
 
@@ -753,13 +755,16 @@ function _update()
       updateLaserone()
    end
 
-   if  t % 60 == 0 then
+   if  t % 150 == 0 and not selfdestruct then
       createAsteroid()
    end 
 
-   updateAsteroid()
+   if t % 800 == 0 and not selfdestruct then
+      createFire()
+   end
 
-   if (hp <= 0) then
+   updateAsteroid()
+   if hp <= 0 then
       selfdestruct = true
    end
 end
@@ -770,13 +775,21 @@ end
 
 function _draw()
    --if (not btn(5)) then
-      cls()
+   cls()
    --end
    --foreach(shipPoints, drawPoint)
    drawStars()
    drawShip()
    drawParticles()
    if not selfdestruct then
+      spr(3, 16, 0, 16, 16)
+   end
+
+   if (selfdestruct) then
+      drawStruct()
+   else
+      drawBotSpawn()
+      drawBrokenStruct()
       drawBoosters()
    end
    pset(mx, my, 8)
@@ -785,6 +798,8 @@ function _draw()
    print("Fps :"..stat(7), 0, 24, 8)
    print("Mem :"..stat(0), 0,  32, 11)
    print("ship pixels: " .. #shipPoints, 0, 56, 8)
+
+   drawParticles()
 
    for b in all(bots) do
       pset(b.x, b.y, 11)
@@ -799,6 +814,7 @@ function _draw()
    end
 
    drawAsteroid()
+   drawGameOver()
 end
 
 
