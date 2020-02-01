@@ -255,12 +255,12 @@ function destroyPoint(x,y)
 	  local point_b = getBFromPoint(p[1], p[2])
       if checkDist(p[1], p[2], x, y, 5+rnd(5)) and point_s == 1 then
          --unsetobjs(pointDataIndex, pointData)
-		 setSFromPoint(p[1], p[2], 0)
+		   setSFromPoint(p[1], p[2], 0)
 
-		 local point_c = getColFromPoint(p[1], p[2])
-		 add(destroyedPoints, {p[1], p[2], 0, point_c, point_b})
-
+		   local point_c = getColFromPoint(p[1], p[2])
+		   add(destroyedPoints, {p[1], p[2], 0, point_c, point_b})
          createParticle(p[1], p[2], point_c)
+         updateHp()
      end
    end
 
@@ -279,14 +279,14 @@ end
 
 function updateHp()
    sum = 0
-   for bP in all(brokenData) do
+   for bP in all(destroyedPoints) do
       --decrease hp bar relative to color destroyed
-      if     bP.c == 13 then sum += 2
-      elseif bP.c == 2 then sum += 2
-      elseif bP.c == 7 then sum += 1
-      elseif bP.c == 6 then sum += 2
-      elseif bP.c == 8 then sum += 13
-      elseif bP.c == 9 then sum += 7
+      if     bP[4] == 13 then sum += 2
+      elseif bP[4] == 2 then sum += 2
+      elseif bP[4] == 7 then sum += 1
+      elseif bP[4] == 6 then sum += 2
+      elseif bP[4] == 8 then sum += 13
+      elseif bP[4] == 9 then sum += 7
       end
    end
    hp = maxhp - sum
@@ -331,6 +331,10 @@ function drawShip()
    for p in all(destroyedPoints) do
 	  pset(p[1], p[2], 0)
    end
+end
+
+function drawPoint(p)
+   pget(p.x, p.y, )
 end
 
 function drawStruct()
@@ -494,11 +498,11 @@ end
 
 function createFire()
    source = {x = flr(rnd(128)), y = flr(rnd(128)), growth = 0}
-   add(fires, source)
-   --local pointAddr = fixind(mx + (my*128))
-   --local pointData = peek(pointAddr)
-   --unsetobjs(pointAddr, pointData)
-   setSFromPoint(mx, my, 0)               -- FIX THIS!!!!!
+   local point_c = getColFromPoint(source.x, source.y)
+   if (point_c == 7) then
+      setSFromPoint(source.x, source.y, 0)
+      add(fires, source)
+   end
 end
 
 
@@ -508,19 +512,15 @@ function updateFires()
          fires[k].growth += 0.02
          for i=0,30 do
             local point = shipPoints[flr(rnd(#shipPoints)) + 1]
-			local tresh = rnd(1)+fires[k].growth
-			local d = checkDist(point.x , point.y, fires[k].x, fires[k].y, tresh)
-			--local pointAddr = fixind(mx + (my*128))
-			--local pointData = peek(pointAddr)
-			--local point_c = pointData%16
-			--local point_s = shr(band(pointData, 0b1000000), 6)
-			local point_c = getColFromPoint(mx, my) -- FIX THIS!!!!
-			local point_s = getSFromPoint(mx, my) -- FIX THIS!!!!
+            local tresh = rnd(1)+fires[k].growth
+            local d = checkDist(point[1] , point[2], fires[k].x, fires[k].y, tresh)
+
+            local point_c = getColFromPoint(point[1], point[2])
+            local point_s = getSFromPoint(point[1], point[2])
 
             if d and point_s == 1 and point_c == 7 then
-			   --unsetobjs(pointAddr, pointData)
-			   setSFromPoint(mx, my, 0) -- FIX THIS!!!
-               createParticle(point.x, point.y, 8)
+               setSFromPoint(point[1], point[2], 0)
+               createParticle(point[1], point[2], 8)
                updateHp()
             end
          end
@@ -755,7 +755,7 @@ function _update60()
       updateLaserone()
    end
 
-   if  t % 150 == 0 and not selfdestruct then
+   if  t % 50 == 0 and not selfdestruct then
       createAsteroid()
    end 
 
@@ -779,17 +779,12 @@ function _draw()
    --end
    --foreach(shipPoints, drawPoint)
    drawStars()
-   drawShip()
-   drawParticles()
-   if not selfdestruct then
-      spr(3, 16, 0, 16, 16)
-   end
 
    if (selfdestruct) then
       drawStruct()
    else
+      drawShip()
       drawBotSpawn()
-      drawBrokenStruct()
       drawBoosters()
    end
    pset(mx, my, 8)
