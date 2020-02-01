@@ -91,11 +91,11 @@ function destroyPoint(x,y)
    for p in all(checkBox) do
       local pointDataIndex = fixind(p[1] + (p[2]*128))
       local pointData = peek(pointDataIndex)
-      local pino = band(pointData, 0b1000000)
-      local point_s = shr(pino, 6)
+      local point_s = shr(band(pointData, 0b1000000), 6)
+      local point_b = shr(band(pointData, 0b10000000), 7)
       if checkDist(p[1], p[2], x, y, 5+rnd(5)) and point_s == 1 then
          unsetobjs(pointDataIndex, pointData)
-         add(destroyedPoints, {p[1], p[2], 0, pointData%16})
+         add(destroyedPoints, {p[1], p[2], 0, pointData%16, point_b})
          createParticle(p[1], p[2], pointData%16)
      end
    end
@@ -239,7 +239,7 @@ end
 function searchTarget()
    if #destroyedPoints > 0 then 
 	  for p in all(destroyedPoints) do
-		 if p[3]==0  and botCol==p[4] then
+		 if p[3]==0  and (botCol==p[4] or p[5]==1) then
 			p[3] = 1
 			return { x = p[1], y = p[2] }
 		 end
@@ -336,14 +336,14 @@ end
 function selfDestruct()
    sdspeed += 50
    for i=0,sdspeed do
-      point = flr(rnd(#shipPoints)) + 1
-	  local pointAddr = fixind(mx + (my*128))
+      point = shipPoints[flr(rnd(#shipPoints)) + 1]
+	  local pointAddr = fixind(point[1] + (point[2]*128))
 	  local pointData = peek(pointAddr)
 	  local point_s = shr(band(pointData, 0b1000000), 6)
 	  if point_s != 0 then
 		 unsetobjs(pointAddr, pointData)
          if sdspeed < 250 then
-            createParticle(shipPoints[point].x, shipPoints[point].y, 8)
+            createParticle(point[1], point[2], 8)
          end
 	  end
    end
