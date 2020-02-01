@@ -130,6 +130,13 @@ function drawBoosters()
    end
 end
 
+function createBoosterParticles()
+   --if t % 1 == 0 then
+      createParticle(16, 40, 9)
+      createParticle(16, 88, 9)
+   --end
+end
+
 --------------------------------
 
 
@@ -176,6 +183,7 @@ function _update()
 
    animateParticles()
    animateStars()
+   createBoosterParticles()
 end
 
 
@@ -185,9 +193,9 @@ end
 function _draw()
    cls()
    drawStars()
+   drawParticles()
    drawStruct()
    drawBoosters()
-   drawParticles()
    pset(mx, my, 8)
    if btn(5) then
 	  print("Mem :"..stat(0), 0,  0, 8)
