@@ -98,6 +98,10 @@ function drawBrokenPoint(p)
    end
 end
 
+function drawStruct()
+   foreach(data, drawPoint)
+end
+
 function drawBrokenStruct()
    foreach(brokenData, drawBrokenPoint)
 end
@@ -183,6 +187,7 @@ function createBots()
    if #bots < 20 then
       add(bots, {x = 51, y = 63, s = rnd(0.5) + 1, t = nil, wait = false})
       add(bots, {x = 51, y = 64, s = rnd(0.5) + 1, t = nil, wait = false})
+      add(bots, {x = 51, y = 65, s = rnd(0.5) + 1, t = nil, wait = false})
    end
 end
 
@@ -230,6 +235,11 @@ function moveBots()
                      end
                   end
                   del(brokenData, p)
+                  for sP in all(botSpawn) do
+                     if (b.t.x == sP.x and b.t.y == sP.y) do
+                        sP.s = 1
+                     end
+                  end
                   del(bots, b)
 
                   --increase hp bar relative to color repaired
@@ -392,10 +402,6 @@ end
 
 
 function _init()
-   poke(0x5F2D, 1)
-	mx = stat(32)
-	my = stat(33)
-	mb = stat(34)
 	data = getStruct()
    brokenData = {}
    botSpawn = getBotSpawn()
@@ -425,41 +431,11 @@ function _init()
 end
 
 
-function mouseLeft()
-   --selfdestruct = true
-   createAsteroid()
-end
-
-function mouseRight()
-   --destroyPoint(mx, my)
-end
-
-function mouseMiddle()
-   createFire()
-   --recreateEveryPoint()
-end
-
-
 
 
 function _update60()
-	mx = stat(32)
-	my = stat(33)
-
    camera(0 + shake.x, 0 + shake.y)
    screenShake()
-
-	if mb==0 then
-		mb = stat(34)
-		if mb==1 then
-		   mouseLeft()
-      elseif mb==2 then
-         mouseRight()
-      elseif mb==4 then
-         mouseMiddle()
-      end
-	end
-	mb = stat(34)
 
    t += 1
 
@@ -488,11 +464,15 @@ function _update60()
       updateLaserone()
    end
 
-   if  t % 100 == 0 then
+   if  t % 100 == 0 and !selfdestruct then
       createAsteroid()
    end 
 
    updateAsteroid()
+
+   if hp <= 0 then
+      selfdestruct = true
+   end
 end
 
 
@@ -501,30 +481,23 @@ end
 
 function _draw()
    --if (not btn(5)) then
-      cls()
+   cls()
    --end
    drawStars()
-   drawParticles()
-
-   spr(3, 16, 0, 16, 16)
-
-   drawBotSpawn()
-   drawBrokenStruct()
 
    if not selfdestruct then
+      spr(3, 16, 0, 16, 16)
+   end
+
+   if (selfdestruct) then
+      drawStruct()
+   else
+      drawBotSpawn()
+      drawBrokenStruct()
       drawBoosters()
    end
-   pset(mx, my, 8)
-   if mb == 2 then
-	  print("Mem :"..stat(0), 0,  64, 8)
-	  print("Cpu1:"..stat(1), 0,  8, 8)
-	  print("Cpu2:"..stat(2), 0, 16, 8)
-	  print("Fps :"..stat(7), 0, 24, 8)
-	  print("mx: " .. mx, 0, 32, 8)
-	  print("my: " .. my, 0, 40, 8)
-	  print("mb: " .. mb, 0, 48, 8)
-     print("botspawn: " .. botSpawn[1].c, 0, 56, 8)
-   end
+
+   drawParticles()
 
    for b in all(bots) do
       pset(b.x, b.y, 11)
@@ -534,13 +507,11 @@ function _draw()
       drawLaserone()
    end
 
-   drawHpBar()
+   if (!selfdestruct) then
+      drawHpBar()
+   end
 
    drawAsteroid()
-
-   --for f in all(fires) do
-      --pset(f.x, f.y, 13)
-   --end
 end
 
 
