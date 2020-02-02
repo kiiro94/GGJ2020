@@ -12,64 +12,18 @@ __lua__
 -------------MEMORY STUFF-----------------
 ------------------------------------------
 
---function fixind(ind)
---   if ind<=9472 then
---	  return 2815+ind
---   else
---	  return 17152+(ind-9472)
---   end
---end
---
---
---function writeobj(x,y,c,s,b)
---   b=0
---   if (col==3) b=1 
---   poke(fixind(x + (y*128)), c+s*64+b*128)
---end
---
---function setobjs(addr, val)
---   poke(addr, bor(0b1000000, val))
---end
---
---function unsetobjs(addr, val)
---   poke(addr, bxor(0b1000000, val))
---end
---
---function setobjc(addr, val, newcol)
---   poke(addr,  bor(0b11111))
---   poke(addr, band(0b11111))
---   newval = bxor(newcol, peek(addr))
---   local temp = val
---   if val>=128 then
---      temp -= 128
---      newval += 128
---   end
---   if val>=64 then
---      temp -= 64
---      newval += 64
---   end
---   poke(addr, newval)
---end
-
-
-
 
 -- 0000 0000 -> 1 byte
 -- SSSS BBBB -> leftmost 4 are 4 pixels of S, rightmost 4 are 4 pixels of B
 -- 1234 1234
 
 function getColFromPoint(x,y)
-   local index = x+y*128
-   local val = peek(flr(index/2))
-   if index%2!=0 then
-	  --take leftmost pixel, discard everything right with shift
-	  return shr(val, 4)
-   else
-	  --take rightmost pixel, discard everything left with and
-	  return band(val, 15)
-   end
+   return sget(x+8,y)
 end
 
+function setColFromPoint(x,y,newCol)
+   sset(x+8,y,newCol)
+end
 
 
 
@@ -151,12 +105,6 @@ function setSFromPoint(x,y,newVal)
 		 poke(addr, finalVal  )
 	  end
    end
-
-   --printh("---")
-   --printh("from: ".. currVal)
-   --printh("to  : ".. finalVal)
-   --printh("for addr: 0x" .. num2hex(addr))
-
 end
 
 
@@ -204,34 +152,20 @@ function setBFromPoint(x,y,newVal)
 		 poke(addr, finalVal)
 	  end
    end
-   --printh("---")
-   --printh("from: ".. currVal)
-   --printh("to  : ".. finalVal)
-   --printh("for addr: 0x" .. num2hex(addr))
 end
 
 
 
 
-
---function readobj(x,y)
---   local val = peek(fixind(x + (y*128)))
---   return {
---	  x=x,--x=ind%128,
---	  y=y,--y=flr(ind/128),
---	  c=val%16,
---	  s=shr(band(val, 0b1000000), 6),
---	  b=shr(band(val, 0b10000000), 7)
---   }
---end
-
+--====================================
+------------ UTILS -------------------
+--====================================
 
 function checkDist(x1, y1, x2, y2, treshold)
    --local dist =sqrt((x1 - x2)^2 + (y1 - y2)^2)
    local dist = abs(x1+1 - x2) + abs(y1+1 - y2)
    return (dist < treshold)
 end
-
 
 function pointsInBox(x,y,w,h)
    local points = {}
@@ -243,56 +177,6 @@ function pointsInBox(x,y,w,h)
    return points
 end
 
-
-function destroyPoint(x,y)
-   local checkBox = pointsInBox(x, y, 20, 20)
-   for p in all(checkBox) do
-      --local pointDataIndex = fixind(p[1] + (p[2]*128))
-      --local pointData = peek(pointDataIndex)
-      --local point_s = shr(band(pointData, 0b1000000), 6)
-      --local point_b = shr(band(pointData, 0b10000000), 7)
-	  local point_s = getSFromPoint(p[1], p[2])
-	  local point_b = getBFromPoint(p[1], p[2])
-      if checkDist(p[1], p[2], x, y, 5+rnd(5)) and point_s == 1 then
-         --unsetobjs(pointDataIndex, pointData)
-		   setSFromPoint(p[1], p[2], 0)
-
-		   local point_c = getColFromPoint(p[1], p[2])
-		   add(destroyedPoints, {p[1], p[2], 0, point_c, point_b})
-         createParticle(p[1], p[2], point_c)
-         updateHp()
-     end
-   end
-
-   shake.t = 21
-end
-
-
-
-function createParticle(x, y, c)
-   add(particles, {x = x, y = y, c = c, sx = rnd(5)+1, sy = rnd(2)-1})
-end
-
-function createBoosterParticle(x, y, c)
-   add(particles, {x = x, y = y, c = c, sx = rnd(5)+1, sy = rnd(2)-1})
-end
-
-function updateHp()
-   sum = 0
-   for bP in all(destroyedPoints) do
-      --decrease hp bar relative to color destroyed
-      if     bP[4] == 13 then sum += 2
-      elseif bP[4] == 2 then sum += 2
-      elseif bP[4] == 7 then sum += 1
-      elseif bP[4] == 6 then sum += 2
-      elseif bP[4] == 8 then sum += 13
-      elseif bP[4] == 9 then sum += 7
-      end
-   end
-   hp = maxhp - sum
-end
-
-
 function getStruct()
    cls()
    spr(3, 16, 0, 16, 16)
@@ -300,7 +184,6 @@ function getStruct()
    for j=0,127 do
 	  for i=0,127 do
 		 local col = pget(i,j)
-		 --writeobj(i,j,col,1,0)
 		 if col!=0 then
 			add(struct, {i,j})
 			setSFromPoint(i,j,1)
@@ -319,85 +202,13 @@ end
 
 function getBotSpawn()
    bS = {}
-   for p in all(data) do 
-      if p.b == 1 then
+   for p in all(shipPoints) do 
+	  local point_s = getBFromPoint(p[1], p[2])
+      if point_s == 1 then
          add(bS, p)
       end
    end
    return bS
-end
-function drawShip()
-   spr(3, 16, 0, 16, 16)
-   for p in all(destroyedPoints) do
-	  pset(p[1], p[2], 0)
-   end
-end
-
-function drawPoint(p)
-   pget(p.x, p.y, )
-end
-
-function drawStruct()
-   foreach(data, drawPoint)
-end
-
-function drawBotSpawn()
-   foreach(botSpawn, drawPoint)
-end
-function drawParticles()
-   for p in all(particles) do
-      pset(p.x, p.y, p.c)
-   end
-end
-
-function animateParticles()
-   for p in all(particles) do
-      p.x -= p.sx
-      p.y += p.sy
-      if (p.x < 0) del(particles, p) 
-   end
-end
-
-
-function createStars()
-   s = {}
-   for i = 0,25 do
-      add(s, {x = rnd(127), y = rnd(127), l = flr(rnd(3))})
-   end
-   return s
-end
-
-function drawStars()
-   for s in all(stars) do
-      pset(s.x, s.y, 7)
-   end
-end
-
-function animateStars()
-   for s in all(stars) do
-      if (s.l == 0) then s.x -= 1
-      elseif (s.l == 1) then s.x -= 2
-      elseif (s.l == 2) then s.x -= 4 end
-
-      if (s.x < 0) then
-         s.x = 129
-         s.l = flr(rnd(3))
-      end
-   end
-end
-
-function drawBoosters()
-   if t % 4 == 0 then
-      spr(65, 16, 32, 2, 2)
-      spr(65, 16, 80, 2, 2)
-   end
-end
-
-function createBoosterParticles()
-   --if t % 1 == 0 then
-      createBoosterParticle(16, 40, 9)
-      createBoosterParticle(16, 88, 9)
-   --end
 end
 
 function screenShake()
@@ -413,19 +224,6 @@ function screenShake()
    end
 end
 
-
-function createBots()
-   if #bots < 20 then
-      add(bots, {x = 51, y = 63, s = rnd(1) + 2, t_ind=0, t = nil, wait = false})
-      add(bots, {x = 51, y = 64, s = rnd(1) + 2, t_ind=0, t = nil, wait = false})
-      add(bots, {x = 51, y = 65, s = rnd(1) + 2, t_ind=0, t = nil, wait = false})
-      add(bots, {x = 51, y = 66, s = rnd(1) + 2, t_ind=0, t = nil, wait = false})
-   end
-end
-
-
-
-
 function searchTarget()
    if #destroyedPoints > 0 then 
 	  for p in all(destroyedPoints) do
@@ -439,44 +237,253 @@ function searchTarget()
 end
 
 
+--====================================
+------------ Actions -----------------
+--====================================
 
+function destroyPoint(x,y)
+   local checkBox = pointsInBox(x, y, 16, 16)
+   for p in all(checkBox) do
+	  local point_s = getSFromPoint(p[1], p[2])
+	  local point_b = getBFromPoint(p[1], p[2])
+      if checkDist(p[1], p[2], x, y, 5+rnd(5)) and point_s == 1 then
+		 setSFromPoint(p[1], p[2], 0)
+		 local point_c = getColFromPoint(p[1], p[2])
+		 add(destroyedPoints, {p[1], p[2], 0, point_c, point_b})
+		 createParticle(p[1], p[2], point_c)
+		 updateHp()
+	  end
+   end
+   shake.t = 21
+end
 
+function selfDestruct()
+   sdspeed += 50
+   for i=0,sdspeed do
+      point = shipPoints[flr(rnd(#shipPoints)) + 1]
+	  local point_s = getSFromPoint(point[1], point[2])
+	  if point_s != 0 then
+		 setSFromPoint(point[1], point[2], 0)
+         if sdspeed < 250 then
+            createParticle(point[1], point[2], 8)
+         elseif sdspeed > 2000 then
+            gameover = true
+         end
+	  end
+   end
+end
 
+function cycleBots(dir)
+   if dir == 0 then
+      if botCol != 15 then
+         botCol += 1
+      else
+         botCol = 0
+      end
+   else
+      if botCol != 0 then
+         botCol -= 1
+      else
+         botCol = 15
+      end
+   end
 
+   for p in all(botSpawnPoints) do
+	  local point_c = getColFromPoint(p[1], p[2])
+	  setColFromPoint(p[1], p[2], botCol)
+	  p[4] = botCol
+   end
+end
 
-function moveBots()
+--====================================
+------------ Inits -------------------
+--====================================
+
+function createParticle(x, y, c)
+   add(particles, {x = x, y = y, c = c, sx = rnd(2)+0.1, sy = rnd(2)-1, size = rnd(1)})
+end
+
+function createBoosterParticle(x, y, c)
+   add(particles, {x = x, y = y+rnd(6)-3, c = c, sx = rnd(2)+1, sy = rnd(2)-1, size = 1})
+end
+
+function createStars()
+   s = {}
+   for i = 0,25 do
+      add(s, {x = rnd(127), y = rnd(127), l = flr(rnd(3))})
+   end
+   return s
+end
+
+function createBoosterParticles()
+   createBoosterParticle(16, 40, 9)
+   createBoosterParticle(16, 88, 9)
+end
+
+function createBot()
+   local pos = botSpawnPoints[flr(rnd(#botSpawnPoints))+1]
+   add(bots, {x = pos[1], y = pos[2], s = rnd(1) + 2,
+			  t_ind=0, t = nil, path = {}})
+end
+
+function createBots()
+   if #bots < 20 then
+	  createBot()
+	  createBot()
+	  createBot()
+   end
+end
+
+function createFire()
+   source = {x = flr(rnd(128)), y = flr(rnd(128)), growth = 0}
+   local point_c = getColFromPoint(source.x, source.y)
+   if (point_c == 7) then
+      setSFromPoint(source.x, source.y, 0)
+      add(fires, source)
+   end
+end
+
+function createLaserone()
+   laserone = {y = my, g = 0}
+end
+
+function createAsteroid()
+   local ast = { x = 140, y = flr(rnd(128)), t = {x = flr(rnd(128)), y = flr(rnd(128))}, s = rnd(1) + 2 }
+   local hit = false
+   local point_c = getColFromPoint(ast.t.x, ast.t.y)
+   local point_b = getBFromPoint(ast.t.x, ast.t.y)
+   if point_c != 0 then
+      hit = true
+      if point_b == 1 then
+         hit = false
+      end
+   end
+   if not hit then
+      ast.t.x = -50
+   end
+   add(asteroids, ast)
+end
+
+function _init()
+   --clean memory
+   memset(0x4300, 0, 0x1b00)
+
+   --init mouse
+   poke(0x5F2D, 1)
+   mx = stat(32)
+   my = stat(33)
+   mb = stat(34)
+
+   --setup data structs
+   particles = {}
+   botSpawnPoints = {}
+   destroyedPoints = {}
+   shipPoints = getStruct()
+   stars = createStars()
+
+   --screenshake
+   shake = { x = 0, y = 0, t = 0}
+
+   --bots
+   bots = {}
+   botCol = 3
+
+   --hazards
+   fires = {}
+   sdspeed = 1
+   laserone = nil
+   asteroids = {}
+
+   --game loop
+   selfdestruct = false
+   t=0
+   maxhp = 1500
+   hp = maxhp
+   gameover = false
+   goan = 0
+
+   --pretty stuff
+   pretty_rect = {x=64,y=64,size=128, targ_size=128, ang=0, ang_delta=0.01}
+end
+
+--====================================
+------------ Updates -----------------
+--====================================
+
+function updateHp()
+   sum = 0
+   for bP in all(destroyedPoints) do
+      --decrease hp bar relative to color destroyed
+      if     bP[4] == 13 then sum += 2
+      elseif bP[4] == 2 then sum += 2
+      elseif bP[4] == 7 then sum += 1
+      elseif bP[4] == 6 then sum += 2
+      elseif bP[4] == 8 then sum += 13
+      elseif bP[4] == 9 then sum += 7
+      end
+   end
+   hp = maxhp - sum
+end
+
+function updateParticles()
+   for p in all(particles) do
+      p.x -= p.sx
+      p.y += p.sy
+      if (p.x < 0) del(particles, p) 
+   end
+end
+
+function updateStars()
+   for s in all(stars) do
+      if (s.l == 0) then s.x -= 1
+      elseif (s.l == 1) then s.x -= 2
+      elseif (s.l == 2) then s.x -= 4 end
+
+      if (s.x < 0) then
+         s.x = 129
+         s.l = flr(rnd(3))
+      end
+   end
+end
+
+function updateBots()
    for b in all(bots) do
       if b.t == nil then
-		 --find target
+		 --search for target/path
          b.t = searchTarget()
-		 if (b.t==nil) del(bots, b)
+		 if b.t!=nil then
+			b.path = findPath({b.x, b.y}, {b.t.x, b.t.y})
+		 end
+		 if b.t==nil or path == nil then
+			del(bots, b)
+		 end
 	  else
-		 --move towards the target
-		 if b.x < b.t.x then b.x += b.s
-         elseif b.x > b.t.x then b.x -= b.s end
-         if b.y < b.t.y then b.y += b.s
-         elseif b.y > b.t.y then b.y -= b.s end
-
+		 --move
+		 if #b.path > 0 then
+			b.x = b.path[1][1]
+			b.y = b.path[1][2]
+			del(b.path, b.path[1])
+		 end
 
 		 --Collision with target
 		 if checkDist(b.x, b.y, b.t.x, b.t.y, 4) then
-			--local pointAddr = fixind(b.t.x + (b.t.y*128))
-			--local pointData = peek(pointAddr)
-			--local pointS = shr(band(pointData, 0b1000000), 6)
-			--local pointC = pointData%16
 			local pointS = getSFromPoint(b.t.x, b.t.y)
 			local pointC = getColFromPoint(b.t.x, b.t.y)
 
 			--Extinguish fire
 			for f in all(fires) do
-			   if f.x == p.x and f.y == p.y then
+			   if f.x == b.x and f.y == b.y then
 				  del(fires, f)
 			   end
 			end
 
 			--reset the point status
-			--setobjs(pointAddr, pointData)
 			setSFromPoint(b.t.x, b.t.y, 1)
+			for p in all(destroyedPoints) do
+			   if p[1] == b.t.x and p[2] == b.t.y then
+				  del(destroyedPoints, p)
+			   end
+			end
 
 			--Kill the bot
 			del(bots, b)
@@ -489,22 +496,11 @@ function moveBots()
 			elseif pointC ==  8 then hp += 13
 			elseif pointC ==  9 then hp += 7
 			end
-                  updateHp()
+			updateHp()
 		 end
 	  end
    end
 end
-
-
-function createFire()
-   source = {x = flr(rnd(128)), y = flr(rnd(128)), growth = 0}
-   local point_c = getColFromPoint(source.x, source.y)
-   if (point_c == 7) then
-      setSFromPoint(source.x, source.y, 0)
-      add(fires, source)
-   end
-end
-
 
 function updateFires()
    if #fires > 0 then
@@ -528,37 +524,6 @@ function updateFires()
    end
 end
 
-
-function selfDestruct()
-   sdspeed += 50
-   for i=0,sdspeed do
-      point = shipPoints[flr(rnd(#shipPoints)) + 1]
-	  --local pointAddr = fixind(point[1] + (point[2]*128))
-	  --local pointData = peek(pointAddr)
-	  --local point_s = shr(band(pointData, 0b1000000), 6)
-	  local point_s = getSFromPoint(point[1], point[2])
-	  if point_s != 0 then
-		 --unsetobjs(pointAddr, pointData)
-		 setSFromPoint(point[1], point[2], 0)
-         if sdspeed < 250 then
-            createParticle(point[1], point[2], 8)
-         elseif sdspeed > 2000 then
-            gameover = true
-         end
-	  end
-   end
-end
-
-
-function createLaserone()
-   laserone = {y = my, g = 0}
-end
-
-function drawLaserone()
-   line(0, laserone.y, laserone.g, laserone.y, 11)
-   line(0, laserone.y + 1, laserone.g, laserone.y + 1, 11)
-end
-
 function updateLaserone()
    laserone.g += 2
    for p in all(shipPoints) do
@@ -569,67 +534,6 @@ function updateLaserone()
    end
    if laserone.g > 128 then
       laserone = nil
-   end
-end
-
-
-function cycleBots(dir)
-   if dir == 0 then
-      if botCol != 15 then
-         botCol += 1
-      else
-         botCol = 0
-      end
-   else
-      if botCol != 0 then
-         botCol -= 1
-      else
-         botCol = 15
-      end
-   end
-
-   for p in all(botSpawnPoints) do
-      --local pointAddr = fixind(p[1] + (p[2]*128))
-	  --local pointData = peek(pointAddr)
-	  --local point_c = pointData%16
-	  local point_c = getColFromPoint(p[1], p[2])
-      --setobjc(pointAddr, pointData, botCol)
-	  -- FIX THIS !!!
-	  p[4] = botCol
-   end
-end
-
-
-function drawHpBar()
-   rectfill(0, 0, (hp/maxhp)*128, 4, 13)
-   print(hp .. "/" .. maxhp, 49, 0, 7)
-end
-
-
-function createAsteroid()
-   local ast = { x = 140, y = flr(rnd(128)), t = {x = flr(rnd(128)), y = flr(rnd(128))}, s = rnd(1) + 2 }
-   --local ast = { x = 140, y = flr(rnd(128)), t = {x = 64, y = 50}, s = rnd(1) + 1 }
-   local hit = false
-   --local pointAddr = fixind(ast.t.x + (ast.t.y*128))
-   --local pointData = peek(pointAddr)
-   --local point_c = pointData%16
-   local point_c = getColFromPoint(ast.t.x, ast.t.y)
-   local point_b = getBFromPoint(ast.t.x, ast.t.y)
-   if point_c != 0 then
-      hit = true
-      if point_b == 1 then
-         hit = false
-      end
-   end
-   if not hit then
-      ast.t.x = -50
-   end
-   add(asteroids, ast)
-end
-
-function drawAsteroid()
-   for a in all(asteroids) do
-      circfill(a.x, a.y, 3, 5)
    end
 end
 
@@ -645,97 +549,35 @@ function updateAsteroid()
          dist = abs(a.x - a.t.x) + abs(a.y - a.t.y)
          if dist < 2 then
             destroyPoint(a.t.x, a.t.y)
+			pretty_rect.x = a.t.x
+			pretty_rect.y = a.t.y
+			pretty_rect.size = 2
+			pretty_rect.ang_delta = (rnd(100)-50)/1000
             del(asteroids, a)
+
             break
          end
       end
    end
 end
 
-function drawGameOver()
-   if gameover then
-      rectfill(64-goan, 60, 64+goan, 65, 8)
-      goan += 5
-      if t % 8 != 0 then
-         print("GAME OVER", 45, 60, 0)
-      end
-   end
-end
-
---------------------------------
-
-
-
-
-function _init()
-   poke(0x5F2D, 1)
-   memset(0x4300, 0, 0x1b00)
-   mx = stat(32)
-   my = stat(33)
-   mb = stat(34)
-   --dataIndexed = {}
-   botSpawnPoints = {}
-   destroyedPoints = {}
-   shipPoints = getStruct()
-
-
-
-   t=0
-   particles = {}
-   stars = createStars()
-
-   shake = { x = 0, y = 0, t = 0}
-
-   bots = {}
-
-   fires = {}
-
-   sdspeed = 1
-   selfdestruct = false
-
-   printh("--- start to find path")
-   --findPath({64, 64}, {60, 30})
-   --index = maptoindex(64,64)
-   --pt = dataIndexed[index]
-   --printh("TEST: " .. pt.x .. ", " .. pt.y)
-
-   laserone = nil
-
-   botCol = 3
-
-   maxhp = 1500
-   hp = maxhp
-
-   asteroids = {}
-
-   gameover = false
-   goan = 0
-end
-
-
-function mouseMiddle()
-   createFire()
-end
-
-
 function _update60()
+   --mouse
    mx = stat(32)
    my = stat(33)
 
+   --screenshake
    camera(0 + shake.x, 0 + shake.y)
    screenShake()
 
+   --time variable
    t += 1
 
-   animateParticles()
-   animateStars()
-
-   if not selfdestruct then
-      createBoosterParticles()
-   end
-
-   moveBots()
-
+   --Update objects
+   updateParticles()
+   updateStars()
+   if (not selfdestruct) createBoosterParticles()
+   updateBots()
    updateFires()
 
    if btnp(4) then
@@ -772,45 +614,178 @@ end
 
 
 
+--====================================
+------------ Draws -------------------
+--====================================
+
+function drawShip()
+   spr(3, 16, 0, 13, 16)
+   for p in all(destroyedPoints) do
+	  pset(p[1], p[2], 0)
+   end
+end
+
+function drawPoint(p)
+   local point_c = getColFromPoint(p[1], p[2])
+   local point_s = getSFromPoint(p[1], p[2])
+   if point_s==1 then
+	  pget(p[1], p[2], point_c)
+   end
+end
+
+function drawParticles()
+   for p in all(particles) do
+      --pset(p.x, p.y, p.c)
+	  circfill(p.x, p.y, p.size, p.c)
+   end
+end
+
+function drawStars()
+   for s in all(stars) do
+      pset(s.x, s.y, 7)
+   end
+end
+
+function drawLaserone()
+   line(0, laserone.y, laserone.g, laserone.y, 11)
+   line(0, laserone.y + 1, laserone.g, laserone.y + 1, 11)
+end
+
+function drawHpBar()
+   rectfill(0, 0, (hp/maxhp)*128, 4, 13)
+   print(hp .. "/" .. maxhp, 49, 0, 7)
+end
+
+function drawAsteroid()
+   for a in all(asteroids) do
+      circfill(a.x, a.y, 3, 5)
+   end
+end
+
+function drawGameOver()
+   if gameover then
+      rectfill(64-goan, 60, 64+goan, 65, 8)
+      goan += 5
+      if t % 8 != 0 then
+         print("GAME OVER", 45, 60, 0)
+      end
+   end
+end
+
+
+function drawPrettyRect()
+   if pretty_rect.size < pretty_rect.targ_size then
+	  if pretty_rect.size == 0 then pretty_rect.size=1 end
+	  pretty_rect.size *= 1.1
+	  pretty_rect.ang += pretty_rect.ang_delta
+	  local x1 = pretty_rect.x + pretty_rect.size*cos(pretty_rect.ang)
+	  local y1 = pretty_rect.y + pretty_rect.size*sin(pretty_rect.ang)
+	  local x2 = pretty_rect.x + pretty_rect.size*cos(pretty_rect.ang + 0.25)
+	  local y2 = pretty_rect.y + pretty_rect.size*sin(pretty_rect.ang + 0.25)
+	  local x3 = pretty_rect.x + pretty_rect.size*cos(pretty_rect.ang + 0.5)
+	  local y3 = pretty_rect.y + pretty_rect.size*sin(pretty_rect.ang + 0.5)
+	  local x4 = pretty_rect.x + pretty_rect.size*cos(pretty_rect.ang + 0.75)
+	  local y4 = pretty_rect.y + pretty_rect.size*sin(pretty_rect.ang + 0.75)
+	  line(x1+1, y1+1, x2+1, y2+1, 9)
+	  line(x2+1, y2+1, x3+1, y3+1, 9)
+	  line(x3+1, y3+1, x4+1, y4+1, 9)
+	  line(x4+1, y4+1, x1+1, y1+1, 9)
+
+	  line(x1, y1, x2, y2, 8)
+	  line(x2, y2, x3, y3, 8)
+	  line(x3, y3, x4, y4, 8)
+	  line(x4, y4, x1, y1, 8)
+   end
+end
+
 
 function _draw()
-   --if (not btn(5)) then
-   cls()
-   --end
-   --foreach(shipPoints, drawPoint)
-   drawStars()
+   cls(shake.x%3)
 
+   --draw layers
+   drawStars()
    if (selfdestruct) then
-      drawStruct()
+	  foreach(shipPoints, drawPoint)
    else
       drawShip()
-      drawBotSpawn()
-      drawBoosters()
+	  foreach(botSpawn, drawPoint)
+	  if t % 4 == 0 then
+		 spr(65, 16, 32, 2, 2)
+		 spr(65, 16, 80, 2, 2)
+	  end
    end
-   pset(mx, my, 8)
-   print("Cpu1:"..stat(1), 0,  8, 8)
-   print("Cpu2:"..stat(2), 0, 16, 8)
-   print("Fps :"..stat(7), 0, 24, 8)
-   print("Mem :"..stat(0), 0,  32, 11)
-   print("ship pixels: " .. #shipPoints, 0, 56, 8)
-
    drawParticles()
-
-   for b in all(bots) do
-      pset(b.x, b.y, 11)
-   end
-
-   if (laserone != nil) then
-      drawLaserone()
-   end
-
-   if not selfdestruct then
-      drawHpBar()
-   end
-
+   for b in all(bots) do pset(b.x, b.y, 11) end
+   if (laserone != nil) then drawLaserone() end
    drawAsteroid()
+
+   --gui
+   if not selfdestruct then drawHpBar() end
    drawGameOver()
+   drawPrettyRect()
+
+   --debug
+   if btn(2) then
+	  pset(mx, my, 8)
+	  print("Cpu1:"..stat(1), 0,  8, 8)
+	  print("m:" .. mx .. "," .. my, 0,  16, 8)
+	  print("cose :".. #particles , 0, 24, 8)
+   end
+
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--Total count : 16053
+--with start : 33,62
+--with goal : 47,62
+
+
+
+
+
+
+
+
+
+--------------------------------
+
+
+
+
+
+
+function mouseMiddle()
+   createFire()
+end
+
+
+
 
 
 
@@ -822,7 +797,10 @@ end
 --pathfinding
 
 function findPath(start, goal)
-   wallCol = 2
+   if goal==nil then return nil end
+   if start==nil then return nil end
+
+   --printh("start: " .. start[1] .. "," .. start[2])
 
    --initialize data with current point
    frontier = {}
@@ -833,49 +811,92 @@ function findPath(start, goal)
    cost_so_far[vectoindex(start)] = 0
 
    --Cycle until i have frontiers unexplored
+   local count = 0
    while (#frontier > 0 and #frontier < 1000) do
+	  count += 1
 	  --Take the current frontier tile
 	  current = popEnd(frontier)
+	  if current!=nil then
 
-	  --If I have reach my goal we can break
-	  if (vectoindex(current) == vectoindex(goal)) break 
+		 --If I have reach my goal we can break
+		 if (vectoindex(current) == vectoindex(goal)) then
+			printh("Reached goal!")
+			break 
+		 end
 
-	  --Get cycle through all the neighbours
-	  local neighbours = getNeighbours(current)
+		 --Get cycle through all the neighbours
+		 local neighbours = {}
+		 local x = current[1]
+		 local y = current[2]
 
-	  
-	  for next in all(neighbours) do
-		 local nextIndex = vectoindex(next)
-		 local new_cost = cost_so_far[vectoindex(current)] + 1
 
-		 --If I have not explored this tile or if I found a better route to an existing one
-		 if (cost_so_far[nextIndex] == nil) or (new_cost < cost_so_far[nextIndex]) then
-			--Set this tile as a new frontier and save its cost
-			cost_so_far[nextIndex] = new_cost
-			local priority = new_cost + heuristic(goal, next)
-			insert(frontier, next, priority)
-			
-			--Save from where I came
-			came_from[nextIndex] = current
-			
-			--if (nextIndex != vectoindex(start)) and (nextIndex != vectoindex(goal)) then
-			--   mset(next[1],next[2],19)
-			--end
-		 end 
+
+
+		 if (rnd(100)<100 and x>0) then
+			if (sget(x-1, y) != 2 or getSFromPoint(x-1,y)==0) then
+			   add(neighbours, {x-1,y})
+			end
+		 end
+
+		 if (rnd(100)<100 and x<127) then
+			if (sget(x+1, y) != 2 or getSFromPoint(x+1,y)==0) then
+			   add(neighbours, {x+1,y})
+			end
+		 end
+
+		 if (rnd(100)<100 and y>0) then
+			if (sget(x, y-1) != 2 or getSFromPoint(x,y-1)==0) then
+			   add(neighbours, {x,y-1})
+			end
+		 end
+
+		 if (rnd(100)<100 and y<127) then
+			if (sget(x, y+1) != 2 or getSFromPoint(x,y+1)==0) then
+			   add(neighbours, {x,y+1})
+			end
+		 end
+
+		 if ((x+y) % 2 == 0) reverse(neighbours)
+
+
+		 for next in all(neighbours) do
+			local nextIndex = vectoindex(next)
+			local new_cost = cost_so_far[vectoindex(current)] + 1
+
+			--If I have not explored this tile or if I found a better route to an existing one
+			if (cost_so_far[nextIndex] == nil) or (new_cost < cost_so_far[nextIndex]) then
+			   --Set this tile as a new frontier and save its cost
+			   cost_so_far[nextIndex] = new_cost
+			   insert(frontier, next, new_cost + heuristic(goal, next))
+			   came_from[nextIndex] = current
+			end 
+		 end
 	  end
    end
+   printh("Total count : " .. count)
+   printh("with start : " .. start[1] .. "," .. start[2])
+   printh("with goal : " .. goal[1] .. "," .. start[2])
+
+   --printh("exited loop")
+   --printh("came from count: " .. #came_from)
+   --printh("frontier count: " .. #frontier)
+   --printh("start: " .. start[1] .. "," .. start[2])
+   --printh("goal : " .. goal[1] .. "," .. goal[2])
 
    --Recreate the path from the goal
    current = came_from[vectoindex(goal)]
-   path = {}
-   local cindex = vectoindex(current)
-   local sindex = vectoindex(start)
-   while cindex != sindex do
-	  add(path, current)
-	  current = came_from[cindex]
-	  cindex = vectoindex(current)
+   path = nil
+   if current != nil then
+	  path = {}
+	  local cindex = vectoindex(current)
+	  local sindex = vectoindex(start)
+	  while cindex != sindex do
+		 add(path, current)
+		 current = came_from[cindex]
+		 cindex = vectoindex(current)
+	  end
+	  reverse(path)
    end
-   reverse(path)
 
    return path
    --for point in all(path) do
@@ -900,30 +921,11 @@ end
 -- find all existing neighbours of a position that are not walls
 debugCounter = 0
 function getNeighbours(pos)
+   --printh("find neighbours for " .. pos[1] .. "," .. pos[2] )
    local neighbours={}
    local x = pos[1]
    local y = pos[2]
 
-
-
-   if x>0 and x<128 and y>0 and y<128 then
-	  for p in all(shipPoints) do
-		 if p.c!=2 then
-			if     (p.x==x-1 and p.y==y) then add(neighbours, {x-1,y})
-		    elseif (p.x==x+1 and p.y==y) then add(neighbours, {x+1,y})
-            elseif (p.x==x and p.y==y+1) then add(neighbours, {x,y+1})
-            elseif (p.x==x and p.y==y-1) then add(neighbours, {x,y-1})
-			end
-		 end
-	  end
-   end
-   debugCounter += 1
-   printh(pos[1] .. "," .. pos[2] .. " dc:" .. debugCounter)
-
-   -- for making diagonals
-   --if (x+y) % 2 == 0 then
-   --	  reverse(neighbours)
-   --end
    return neighbours
 end
 
@@ -1062,7 +1064,7 @@ __gfx__
 00000000000000000000000000000011ddddd1dddddddddddddd6110000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000011ddddd1ddddddddddddddd611000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000011ddddd1dddddddddddddddd61100000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000111111222222222222222ddd6110000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000111111222222272222222ddd6110000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000111127777777777777772ddd110000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000001ffff27777777777777772ddd110000000000000000000000000000000000000000000000000000000000000000000000
 0000000000077000000000000007711f888827777777777777772ddd110000000000000000000000000000000000000000000000000000000000000000000000
@@ -1073,7 +1075,7 @@ __gfx__
 000000007777700000000000799991f88888277777777777777776777777777777777777777772dddddddddddddddddddddddddddd1666666111000000000000
 000000007777700000000000799991f888882777777777777777767777777777777777777777772ddddddddddddddd6666ddddd6661666666611100000000000
 000000007777700000000000799991f8888827777777777777777677777777777777777777777726666666666666661111666661116666666666110000000000
-000000007777700000000000799991f8888827777777777777777677777777777777777777777721111111111111116666111116666666666666110000000000
+000000007777700000000000799991f8888827777777777777777677777777777777777777777771111111111111116666111116666666666666110000000000
 000000000777700000000000079991f888882777777777777777227777777777777777777777772f116666666666666666666666666666666666110000000000
 000000000077700000000000007991f888882777777777777772dd27777777777777777777777728ff1166666666666666666666666666666666110000000000
 0000000000077000000000000007711f88882777777777777772dd2777777777777777777777772888ff17777777777777777777777777777771100000000000
@@ -1094,7 +1096,7 @@ __gfx__
 000000000000000000000000000000000001f882777777223333333333333333333333333227777777777777777777777777728f100000000000000000000000
 000000000000000000000000000000000001f882777777223333333333333333333333333227777777777777777777777777728f100000000000000000000000
 000000000000000000000000000000000001f882777777233333333333333333333333333327777777777777777777777777728f100000000000000000000000
-000000000000000000000000000000000001f882777777633333333333333333333333333367777777777777777777777777728f100000000000000000000000
+000000000000000000000000000000000001f887777777633333333333333333333333333367777777777777777777777777728f100000000000000000000000
 000000000000000000000000000000000001f882777777633333333333333333333333333367777777777777777777777777728f100000000000000000000000
 000000000000000000000000000000000001f882777777233333333333333333333333333327777777777777777777777777728f100000000000000000000000
 000000000000000000000000000000000001f882777777223333333333333333333333333227777777777777777777777777728f100000000000000000000000
@@ -1116,7 +1118,7 @@ __gfx__
 0000000000000000000000000007711f88882777777777777772dd2777777777777777777777772888ff17777777777777777777777777777771100000000000
 000000000000000000000000007991f888882777777777777772dd27777777777777777777777728ff1166666666666666666666666666666666110000000000
 000000000000000000000000079991f888882777777777777777227777777777777777777777772f116666666666666666666666666666666666110000000000
-000000000000000000000000799991f8888827777777777777777677777777777777777777777721111111111111116666111116666666666666110000000000
+000000000000000000000000799991f8888827777777777777777677777777777777777777777771111111111111116666111116666666666666110000000000
 000000000000000000000000799991f8888827777777777777777677777777777777777777777726666666666666661111666661116666666666110000000000
 000000000000000000000000799991f888882777777777777777767777777777777777777777772ddddddddddddddd6666ddddd6661666666611100000000000
 000000000000000000000000799991f88888277777777777777776777777777777777777777772dddddddddddddddddddddddddddd1666666111000000000000
@@ -1127,7 +1129,7 @@ __gfx__
 0000000000000000000000000007711f888827777777777777772ddd110000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000001ffff27777777777777772ddd110000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000111127777777777777772ddd110000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000111111222222222222222ddd6110000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000111111222222272222222ddd6110000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000011ddddd1dddddddddddddddd61100000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000011ddddd1ddddddddddddddd611000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000011ddddd1dddddddddddddd6110000000000000000000000000000000000000000000000000000000000000000000000000
