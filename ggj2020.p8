@@ -792,11 +792,11 @@ function _draw()
    drawPrettyRect()
 
    for i=1,6 do
-	  rectfill(60-i*10, 122, 68-i*10, 128, botCol+i)
-	  rectfill(60+i*10, 122, 68+i*10, 128, botCol-i)
+	  rectfill(60-i*10, 125, 68-i*10, 128, botCol+i)
+	  rectfill(60+i*10, 125, 68+i*10, 128, botCol-i)
    end
-   circfill(64, 124, 5, botCol)
-   circ(64, 124, 5, 7)
+   circfill(64, 125, 5, botCol)
+   circ(64, 125, 5, 7)
 
    local col = botCol
    if col<1 then col=16 end
