@@ -201,13 +201,13 @@ end
 function searchTarget(b)
    pivot = flr(rnd(#brokenData))
    for i=pivot + 1 ,#brokenData do
-      if brokenData[i].s == 0 and brokenData[i].c == botCol then
+      if brokenData[i].s == 0 and brokenData[i].c == cols[botCol] then
          brokenData[i].s = 2
          return { x = brokenData[i].x, y = brokenData[i].y }
       end
    end
    for i=1,pivot do
-      if brokenData[i].s == 0 and brokenData[i].c == botCol then
+      if brokenData[i].s == 0 and brokenData[i].c == cols[botCol] then
          brokenData[i].s = 2
          return { x = brokenData[i].x, y = brokenData[i].y }
       end
@@ -332,19 +332,27 @@ function updateLaserone()
 end
 
 
-function cycleBots()
-   if botCol != 15 then
-      botCol += 1
+function cycleBots(dir)
+   if dir == 0 then
+      if botCol != 7 then
+         botCol += 1
+      else
+         botCol = 1
+      end
    else
-      botCol = 0
+      if botCol != 1 then
+         botCol -= 1
+      else
+         botCol = 7
+      end
    end
    for p in all(brokenData) do
       if p.b == 1 then
-         p.c = botCol
+         p.c = cols[botCol]
       end
    end
    for p in all(botSpawn) do
-      p.c = botCol
+      p.c = cols[botCol]
    end
 end
 
@@ -356,11 +364,24 @@ end
 
 
 function createAsteroid()
-   local ast = { x = 140, y = flr(rnd(128)), t = {x = flr(rnd(128)), y = flr(rnd(128))}, s = rnd(1) + 1 }
    local hit = false
-   for p in all(data) do
-      if p.x == ast.t.x and p.y == ast.t.y then
-         hit = true
+   local ast = { x = 140, y = flr(rnd(128)), t = {x = flr(rnd(128)), y = flr(rnd(128))}, s = rnd(1) + 1 }
+   
+   if (forcedHit) then
+      repeat
+         ast = { x = 140, y = flr(rnd(128)), t = {x = flr(rnd(128)), y = flr(rnd(128))}, s = rnd(1) + 1 }
+         
+         for p in all(data) do
+            if p.x == ast.t.x and p.y == ast.t.y then
+               hit = true
+            end
+         end
+      until hit == true
+   else   
+      for p in all(data) do
+         if p.x == ast.t.x and p.y == ast.t.y then
+            hit = true
+         end
       end
    end
    if not hit then
@@ -442,6 +463,10 @@ function _init()
 
    gameover = false
    goan = 0
+
+   forcedHit = true
+
+   cols = {13, 2, 7, 6, 8, 9, 15}
 end
 
 
@@ -464,23 +489,24 @@ function _update60()
 
    updateFires()
 
-   if btnp(4) then
+   if btn(4) then
       createBots()
-   elseif btnp(5) then
-      cycleBots()
+   end
+   if btnp(0) then
+      cycleBots(0)
+   elseif btnp(1) then
+      cycleBots(1)
    end
    if selfdestruct and sdspeed < 2500 then selfDestruct() end
 
-   if (btnp(0)) then
-      createLaserone()
-   end
-   if laserone != nil then
-      updateLaserone()
-   end
-
-   if  t % 150 == 0 and not selfdestruct then
+   if  t % 100 == 0 and not selfdestruct then
       createAsteroid()
+      if forcedHit then
+         forcedHit = false
+      end
    end 
+
+   if t % 400 == 0 then forcedHit = true end
 
    if t % 800 == 0 and not selfdestruct then
       createFire()
