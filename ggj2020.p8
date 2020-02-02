@@ -561,7 +561,7 @@ function updateFires()
    if #fires > 0 then
       for k=1,#fires do
          fires[k].growth += 0.02
-         for i=0,30 do
+         for i=0,10 do
             local point = shipPoints[flr(rnd(#shipPoints)) + 1]
             local tresh = rnd(1)+fires[k].growth
             local d = checkDist(point[1] , point[2], fires[k].x, fires[k].y, tresh)
