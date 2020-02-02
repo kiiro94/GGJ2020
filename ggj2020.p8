@@ -801,7 +801,7 @@ function drawLaserone()
 end
 
 function drawHpBar()
-   local col = 11
+   local col = 13
    if (hp/maxhp)<0.3 then
 	  col = 8
    elseif (hp/maxhp)<0.6 then
