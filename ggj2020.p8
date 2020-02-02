@@ -27,6 +27,7 @@ end
 
 
 
+
 function getSFromPoint(x,y)
    local index = x+y*128
    local val = peek(flr(index/4)+0x4300)
@@ -224,17 +225,6 @@ function screenShake()
    end
 end
 
-function searchTarget()
-   if #destroyedPoints > 0 then 
-	  for p in all(destroyedPoints) do
-		 if p[3]==0  and (botCol==p[4] or p[5]==1) then
-			p[3] = 1
-			return { x = p[1], y = p[2] }
-		 end
-	  end
-   end
-   return nil
-end
 
 
 --====================================
@@ -242,11 +232,11 @@ end
 --====================================
 
 function destroyPoint(x,y)
-   local checkBox = pointsInBox(x, y, 16, 16)
+   local checkBox = pointsInBox(x, y, 12, 12)
    for p in all(checkBox) do
 	  local point_s = getSFromPoint(p[1], p[2])
 	  local point_b = getBFromPoint(p[1], p[2])
-      if checkDist(p[1], p[2], x, y, 5+rnd(5)) and point_s == 1 then
+      if checkDist(p[1], p[2], x, y, 3+rnd(4)) and point_s == 1 then
 		 setSFromPoint(p[1], p[2], 0)
 		 local point_c = getColFromPoint(p[1], p[2])
 		 add(destroyedPoints, {p[1], p[2], 0, point_c, point_b})
@@ -328,8 +318,8 @@ end
 
 function createBots()
    if #bots < 20 then
-	  createBot()
-	  createBot()
+	  --createBot()
+	  --createBot()
 	  createBot()
    end
 end
@@ -344,7 +334,19 @@ function createFire()
 end
 
 function createLaserone()
-   laserone = {y = my, g = 0}
+   laserone = {
+	  sx = 0,
+	  sy = 64+(rnd(64)-32),
+	  ex = 0,
+	  ey = 0,
+	  ty = rnd(128),
+	  angle = 0,
+	  reps = 3,
+      spd = rnd(2)+1}
+
+   laserone.angle = atan2(128 - 0, laserone.ty  - laserone.sy)
+   laserone.ex = laserone.sx
+   laserone.ey = laserone.sy
 end
 
 function createAsteroid()
@@ -401,9 +403,38 @@ function _init()
    hp = maxhp
    gameover = false
    goan = 0
+   score = 0
 
    --pretty stuff
    pretty_rect = {x=64,y=64,size=128, targ_size=128, ang=0, ang_delta=0.01}
+
+   colValue = {}
+   colValue[1]  = 0
+   colValue[2]  = 2
+   colValue[3]  = 0
+   colValue[4]  = 0
+   colValue[5]  = 0
+   colValue[6]  = 2
+   colValue[7]  = 1
+   colValue[8]  = 13
+   colValue[9]  = 7
+   colValue[10] = 0
+   colValue[11] = 0
+   colValue[12] = 0
+   colValue[13] = 2
+   colValue[14] = 0
+   colValue[15] = 0
+   colValue[16] = 0
+
+   --for j=0,127 do
+   --	  s = ""
+   --	  for i=0,127 do
+   --		 s = s .. getColFromPoint(i,j)
+   --	  end
+   --	  printh(s)
+   --end
+
+
 end
 
 --====================================
@@ -414,13 +445,7 @@ function updateHp()
    sum = 0
    for bP in all(destroyedPoints) do
       --decrease hp bar relative to color destroyed
-      if     bP[4] == 13 then sum += 2
-      elseif bP[4] == 2 then sum += 2
-      elseif bP[4] == 7 then sum += 1
-      elseif bP[4] == 6 then sum += 2
-      elseif bP[4] == 8 then sum += 13
-      elseif bP[4] == 9 then sum += 7
-      end
+	  sum += colValue[bP[4]]
    end
    hp = maxhp - sum
 end
@@ -448,13 +473,25 @@ end
 
 function updateBots()
    for b in all(bots) do
-      if b.t == nil then
+      if b.t == nil or b.path == nil then
 		 --search for target/path
-         b.t = searchTarget()
+		 local pointRef = nil
+		 if #destroyedPoints > 0 then 
+			for p in all(destroyedPoints) do
+			   if p[3]==0  and (botCol==p[4] or p[5]==1) then
+				  pointRef = p --take the ref to mark it later
+				  b.t = { x = p[1], y = p[2] }
+			   end
+			end
+		 end
+
 		 if b.t!=nil then
 			b.path = findPath({b.x, b.y}, {b.t.x, b.t.y})
+			if b.path != nil then
+			   pointRef[3] = 1
+			end
 		 end
-		 if b.t==nil or path == nil then
+		 if b.t==nil or b.path == nil then
 			del(bots, b)
 		 end
 	  else
@@ -489,13 +526,7 @@ function updateBots()
 			del(bots, b)
 
 			--increase hp bar relative to color repaired
-			if     pointC == 13 then hp += 2
-			elseif pointC ==  2 then hp += 2
-			elseif pointC ==  7 then hp += 1
-			elseif pointC ==  6 then hp += 2
-			elseif pointC ==  8 then hp += 13
-			elseif pointC ==  9 then hp += 7
-			end
+			hp += colValue[pointC]
 			updateHp()
 		 end
 	  end
@@ -525,14 +556,28 @@ function updateFires()
 end
 
 function updateLaserone()
-   laserone.g += 2
-   for p in all(shipPoints) do
-      if (p.x == laserone.g + 2 and p.y == laserone.y + flr(rnd(2)) - 1) then
-         p.s = 0
-         createParticle(p.x, p.y, p.c)
-      end
+   for i=0,laserone.reps do
+	  laserone.ex = laserone.ex + laserone.spd*cos(laserone.angle)
+	  laserone.ey = laserone.ey + laserone.spd*sin(laserone.angle)
+
+	  local set = {{1,0}, {0,1}, {1,1}, {0,0}}
+
+	  for s in all(set) do
+		 local x = flr(laserone.ex + s[1])
+		 local y = flr(laserone.ey + s[2])
+		 local point_s = getSFromPoint(x, y)
+		 if point_s == 1 then
+			setSFromPoint(x, y)
+			local point_c = getColFromPoint(x, y)
+			createParticle(x, y, point_c)
+			local point_b = getBFromPoint(x, y)
+			add(destroyedPoints, {x, y, 0, point_c, point_b})
+			updateHp()
+		 end
+	  end
    end
-   if laserone.g > 128 then
+
+   if laserone.ex > 128 then
       laserone = nil
    end
 end
@@ -572,6 +617,9 @@ function _update60()
 
    --time variable
    t += 1
+   if not selfdestruct then
+	  score += 1
+   end
 
    --Update objects
    updateParticles()
@@ -580,22 +628,15 @@ function _update60()
    updateBots()
    updateFires()
 
-   if btnp(4) then
-      createBots()
-   end
-
-   if (btnp(0)) then
-      cycleBots(0)
-   elseif (btnp(1)) then
-      cycleBots(1)
-   end
+   if (btnp(4)) createBots()
+   if (btnp(0)) cycleBots(0)
+   if (btnp(1)) cycleBots(1) 
+   if (btnp(3)) createLaserone()
 
    if selfdestruct and sdspeed < 2500 then selfDestruct() end
 
 
-   if laserone != nil then
-      updateLaserone()
-   end
+   if (laserone != nil) updateLaserone()
 
    if  t % 50 == 0 and not selfdestruct then
       createAsteroid()
@@ -647,8 +688,7 @@ function drawStars()
 end
 
 function drawLaserone()
-   line(0, laserone.y, laserone.g, laserone.y, 11)
-   line(0, laserone.y + 1, laserone.g, laserone.y + 1, 11)
+   line(laserone.sx, laserone.sy, laserone.ex, laserone.ey, 11)
 end
 
 function drawHpBar()
@@ -658,7 +698,8 @@ end
 
 function drawAsteroid()
    for a in all(asteroids) do
-      circfill(a.x, a.y, 3, 5)
+      circfill(a.x, a.y, 3, 13)
+      circ(a.x, a.y, 3, 5)
    end
 end
 
@@ -715,14 +756,43 @@ function _draw()
 	  end
    end
    drawParticles()
-   for b in all(bots) do pset(b.x, b.y, 11) end
+   for b in all(bots) do
+	  if b.path != nil then
+		 for p in all(b.path) do
+			pset(p[1], p[2], 3)
+		 end
+	  end
+	  pset(b.x, b.y, 11)
+   end
    if (laserone != nil) then drawLaserone() end
    drawAsteroid()
 
    --gui
-   if not selfdestruct then drawHpBar() end
+   if not selfdestruct then
+	  drawHpBar()
+   end
    drawGameOver()
    drawPrettyRect()
+
+   for i=1,6 do
+	  rectfill(60-i*10, 122, 68-i*10, 128, botCol+i)
+	  rectfill(60+i*10, 122, 68+i*10, 128, botCol-i)
+   end
+   circfill(64, 124, 5, botCol)
+   circ(64, 124, 5, 7)
+
+   local col = botCol
+   if col<1 then col=16 end
+   local val = colValue[col] 
+   if val<10 then
+	  print(val, 63, 122, 0)
+   else
+	  print(val, 61, 122, 0)
+   end
+
+   local s = ""..score
+   print(t, 65-#s*2, 112, 7)
+
 
    --debug
    if btn(2) then
@@ -814,13 +884,23 @@ function findPath(start, goal)
    local count = 0
    while (#frontier > 0 and #frontier < 1000) do
 	  count += 1
+
+	  if count>1000 then
+		 --local dir = atan2(start[1] - goal[1], start[2], - goal[2])
+		 --local len = 1
+		 --local nx = start[1] + len*
+		 --while checkDist()
+		 return nil
+	  end
+
+
 	  --Take the current frontier tile
 	  current = popEnd(frontier)
 	  if current!=nil then
 
 		 --If I have reach my goal we can break
 		 if (vectoindex(current) == vectoindex(goal)) then
-			printh("Reached goal!")
+			--printh("Reached goal!")
 			break 
 		 end
 
@@ -831,28 +911,33 @@ function findPath(start, goal)
 
 
 
+		 local step = 1
 
-		 if (rnd(100)<100 and x>0) then
-			if (sget(x-1, y) != 2 or getSFromPoint(x-1,y)==0) then
-			   add(neighbours, {x-1,y})
+		 if (x>15) then
+			local col = getColFromPoint(x-step, y)
+			if (col>0 and (col != 2 or getSFromPoint(x-step,y)==0)) then
+			   add(neighbours, {x-step,y})
 			end
 		 end
 
-		 if (rnd(100)<100 and x<127) then
-			if (sget(x+1, y) != 2 or getSFromPoint(x+1,y)==0) then
-			   add(neighbours, {x+1,y})
+		 if (x<110) then
+			local col = getColFromPoint(x+step, y)
+			if (col>0 and (col != 2 or getSFromPoint(x+step,y)==0)) then
+			   add(neighbours, {x+step,y})
 			end
 		 end
 
-		 if (rnd(100)<100 and y>0) then
-			if (sget(x, y-1) != 2 or getSFromPoint(x,y-1)==0) then
-			   add(neighbours, {x,y-1})
+		 if (y>12) then
+			local col = getColFromPoint(x, y-step)
+			if (col>0 and (col != 2 or getSFromPoint(x,y-step)==0)) then
+			   add(neighbours, {x,y-step})
 			end
 		 end
 
-		 if (rnd(100)<100 and y<127) then
-			if (sget(x, y+1) != 2 or getSFromPoint(x,y+1)==0) then
-			   add(neighbours, {x,y+1})
+		 if (y<115) then
+			local col = getColFromPoint(x, y+step)
+			if (col>0 and (col != 2 or getSFromPoint(x,y+step)==0)) then
+			   add(neighbours, {x,y+step})
 			end
 		 end
 
@@ -873,9 +958,9 @@ function findPath(start, goal)
 		 end
 	  end
    end
-   printh("Total count : " .. count)
-   printh("with start : " .. start[1] .. "," .. start[2])
-   printh("with goal : " .. goal[1] .. "," .. start[2])
+   --printh("Total count : " .. count)
+   --printh("with start : " .. start[1] .. "," .. start[2])
+   --printh("with goal : " .. goal[1] .. "," .. start[2])
 
    --printh("exited loop")
    --printh("came from count: " .. #came_from)
