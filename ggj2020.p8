@@ -192,9 +192,9 @@ end
 
 function createBots()
    if #bots < 20 then
-      add(bots, {x = 51, y = 63, s = rnd(0.5) + 1, t = nil, wait = false})
-      add(bots, {x = 51, y = 64, s = rnd(0.5) + 1, t = nil, wait = false})
-      add(bots, {x = 51, y = 65, s = rnd(0.5) + 1, t = nil, wait = false})
+      add(bots, {x = 51, y = 63, s = rnd(0.5) + 0.5, t = nil, wait = false})
+      add(bots, {x = 51, y = 64, s = rnd(0.5) + 0.5, t = nil, wait = false})
+      add(bots, {x = 51, y = 65, s = rnd(0.5) + 0.5, t = nil, wait = false})
    end
 end
 
@@ -239,6 +239,7 @@ function moveBots()
                   for f in all(fires) do
                      if f.x == p.x and f.y == p.y then
                         del(fires, f)
+                        break
                      end
                   end
                   del(brokenData, p)
@@ -272,7 +273,6 @@ end
 function updateFires()
    if #fires > 0 then
       for k=1,#fires do
-         fire = flr(rnd(#fires)) + 1
          fires[k].growth += 0.01
          for i=0,15 do
             point = flr(rnd(5207)) + 1
@@ -497,6 +497,7 @@ function _update60()
    elseif btnp(1) then
       cycleBots(1)
    end
+
    if selfdestruct and sdspeed < 2500 then selfDestruct() end
 
    if  t % 100 == 0 and not selfdestruct then
@@ -506,11 +507,11 @@ function _update60()
       end
    end 
 
-   if t % 400 == 0 then forcedHit = true end
+   if t % 800 == 0 then forcedHit = true end
 
-   if t % 800 == 0 and not selfdestruct then
-      createFire()
-   end
+   --if t % 800 == 0 and not selfdestruct then
+      --createFire()
+   --end
 
    updateAsteroid()
 
@@ -667,7 +668,6 @@ function getNeighbours(pos)
 	  end
    end
    debugCounter += 1
-   printh(pos[1] .. "," .. pos[2] .. " dc:" .. debugCounter)
 
    -- for making diagonals
    --if (x+y) % 2 == 0 then
