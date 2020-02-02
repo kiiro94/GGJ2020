@@ -941,7 +941,7 @@ function findPath(start, goal)
 			end
 		 end
 
-		 if ((x+y) % 2 == 0) reverse(neighbours)
+		 --if ((x+y) % 2 == 0) reverse(neighbours)
 
 
 		 for next in all(neighbours) do
@@ -1005,14 +1005,6 @@ end
 
 -- find all existing neighbours of a position that are not walls
 debugCounter = 0
-function getNeighbours(pos)
-   --printh("find neighbours for " .. pos[1] .. "," .. pos[2] )
-   local neighbours={}
-   local x = pos[1]
-   local y = pos[2]
-
-   return neighbours
-end
 
 -- insert into start of table
 function insert(t, val)
