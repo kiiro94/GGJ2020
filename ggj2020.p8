@@ -389,11 +389,13 @@ function _init()
    mx = stat(32)
    my = stat(33)
    mb = stat(34)
+   botButtonPressed = false
 
    --setup data structs
    particles = {}
    botSpawnPoints = {}
    destroyedPoints = {}
+   firePixels = {}
    shipPoints = getStruct()
    stars = createStars()
 
@@ -572,6 +574,7 @@ function updateFires()
             local point_s = getSFromPoint(point[1], point[2])
 
             if d and point_s == 1 and point_c == 7 then
+			   add(firePixels, {point[1], point[2]})
 
                setSFromPoint(point[1], point[2], 0)
                createParticle(point[1], point[2], 8)
@@ -659,7 +662,20 @@ function _update60()
    updateBots()
    updateFires()
 
-   if (btnp(4)) createBots()
+
+
+   if botButtonPressed == false then
+	  if (btn(4)) botButtonPressed = true
+	  if botButtonPressed == true then
+		 createBots()
+	  end
+   else
+	  botButtonPressed = false
+	  if (btn(4)) botButtonPressed = true
+   end
+
+
+
    if (btnp(0)) cycleBots(0)
    if (btnp(1)) cycleBots(1) 
    if (btnp(3)) createLaserone()
@@ -801,6 +817,14 @@ function _draw()
 	  end
    end
    drawParticles()
+
+   if not selfdestruct or gameover then
+	  for f in all(firePixels) do
+		 pset(f[1], f[2], rnd(2)+8)
+	  end
+   end
+
+
    for b in all(bots) do
 	  if b.path != nil then
 		 for p in all(b.path) do
