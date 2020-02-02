@@ -360,7 +360,7 @@ function createLaserone()
    laserone.angle = atan2(128 - 0, laserone.ty  - laserone.sy)
    laserone.ex = laserone.sx
    laserone.ey = laserone.sy
-   sfx(2,1)
+   sfx(2,3)
 end
 
 function createAsteroid()
@@ -404,9 +404,6 @@ function _init()
 
    --screenshake
    shake = { x = 0, y = 0, t = 0}
-
-   --music
-   music(0)
 
    --bots
    bots = {}
@@ -474,9 +471,9 @@ function updateHp()
    end
 
    if hp>maxhp*0.3 and (maxhp-sum) <= maxhp*0.3 then
-	  sfx(0, 2)		
+	  sfx(0, 3)		
    elseif hp<maxhp*0.3 and (maxhp-sum) >= maxhp*0.3 then
-	  sfx(-2, 2)
+	  sfx(-2, 3)
    end
 
    hp = maxhp - sum
@@ -546,6 +543,7 @@ function updateBots()
 			for f in all(fires) do
 			   if flr(f.x) == flr(b.t.x) and flr(f.y) == flr(b.t.y) then
 				  del(fires, f)
+
 			   end
 			end
 
@@ -557,6 +555,13 @@ function updateBots()
 			   end
 			end
 
+			for fp in all(firePixels) do
+			   if flr(b.t.x) == flr(fp[1]) and flr(b.t.y) == flr(fp[2]) then
+				  del(firePixels, fp)
+			   end
+			end
+
+
 			--Kill the bot
 			del(bots, b)
 
@@ -564,7 +569,7 @@ function updateBots()
 			hp += colValue[pointC]
 			score += 1
 			if (stat(19) == -1) then
-			   sfx(3,1)
+			   sfx(3,3)
 			end
 			updateHp()
 		 end
@@ -645,7 +650,7 @@ function updateAsteroid()
 			pretty_rect.size = 2
 			pretty_rect.ang_delta = (rnd(100)-50)/1000
             del(asteroids, a)
-			sfx(1,1)
+			sfx(1,3)
 
             break
          end
@@ -670,6 +675,14 @@ function superHeal()
                del(destroyedPoints, p)
                del(superheal.dp[1])
                createParticle(p[1], p[2], p[3])
+
+
+			   for fp in all(firePixels) do
+				  if flr(p[1]) == flr(fp[1]) and flr(p[2]) == flr(fp[2]) then
+					 del(firePixels, fp)
+				  end
+			   end
+
                break
             end
          end
@@ -737,6 +750,8 @@ function updategame ()
    if hp <= 0 then
       selfdestruct = true
    end
+
+   superHeal()
 end
 
 
@@ -747,6 +762,10 @@ function updatemenu ()
    end
    if menu==false then
 	  menuTransition += 1
+	  if menuTransition>=60 then
+		 --music
+		 --music(12)
+	  end
    end
 end
 
@@ -757,8 +776,6 @@ function _update60()
    else
 	  updategame()
    end
-
-   superHeal()
 end
 
 
@@ -878,7 +895,7 @@ function drawgame()
 
    if not selfdestruct and not gameover then
 	  for f in all(firePixels) do
-		 pset(f[1], f[2], rnd(2)+8)
+		 pset(f[1], f[2]-1, rnd(2)+8)
 	  end
    end
 
