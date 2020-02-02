@@ -831,8 +831,9 @@ function _draw()
 	  print(val, 61, 122, 0)
    end
 
+
    local s = ""..score
-   print(s, 65-#s*2, 112, 7)
+   print(s, 53-#s*2, 62, botCol + 1)
 
 
    --debug
