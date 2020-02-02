@@ -306,8 +306,8 @@ function createStars()
 end
 
 function createBoosterParticles()
-   createBoosterParticle(16, 40, 9)
-   createBoosterParticle(16, 88, 9)
+   createBoosterParticle(16, 40, flr(rnd(2))+9)
+   createBoosterParticle(16, 88, flr(rnd(2))+9)
 end
 
 function createBot()
@@ -360,6 +360,7 @@ function createLaserone()
    laserone.angle = atan2(128 - 0, laserone.ty  - laserone.sy)
    laserone.ex = laserone.sx
    laserone.ey = laserone.sy
+   sfx(2,2)
 end
 
 function createAsteroid()
@@ -455,11 +456,19 @@ end
 --====================================
 
 function updateHp()
+
    sum = 0
    for bP in all(destroyedPoints) do
       --decrease hp bar relative to color destroyed
 	  sum += colValue[bP[4]]
    end
+
+   if hp>maxhp*0.3 and (maxhp-sum) <= maxhp*0.3 then
+	  sfx(0, 1)		
+   elseif hp<maxhp*0.3 and (maxhp-sum) >= maxhp*0.3 then
+	  sfx(-2, 1)
+   end
+
    hp = maxhp - sum
 end
 
@@ -494,6 +503,7 @@ function updateBots()
 			   if p[3]==0  and (botCol==p[4] or p[5]==1) then
 				  pointRef = p --take the ref to mark it later
 				  b.t = { x = p[1], y = p[2] }
+				  break
 			   end
 			end
 		 end
@@ -522,7 +532,7 @@ function updateBots()
 
 			--Extinguish fire
 			for f in all(fires) do
-			   if f.x == b.x and f.y == b.y then
+			   if flr(f.x) == flr(b.t.x) and flr(f.y) == flr(b.t.y) then
 				  del(fires, f)
 			   end
 			end
@@ -540,6 +550,7 @@ function updateBots()
 
 			--increase hp bar relative to color repaired
 			hp += colValue[pointC]
+			sfx(3,3)
 			updateHp()
 		 end
 	  end
@@ -616,6 +627,7 @@ function updateAsteroid()
 			pretty_rect.size = 2
 			pretty_rect.ang_delta = (rnd(100)-50)/1000
             del(asteroids, a)
+			sfx(1,2)
 
             break
          end
