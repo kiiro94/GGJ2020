@@ -655,6 +655,13 @@ function _update60()
 
    if (laserone != nil) updateLaserone()
 
+
+
+   if t%60==0 and rnd(100)<10 then
+	  if(laserone == nil) createLaserone()
+   end
+
+
    if  t % 50 == 0 and not selfdestruct then
       createAsteroid()
    end 
