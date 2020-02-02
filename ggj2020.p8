@@ -360,7 +360,7 @@ function createLaserone()
    laserone.angle = atan2(128 - 0, laserone.ty  - laserone.sy)
    laserone.ex = laserone.sx
    laserone.ey = laserone.sy
-   sfx(2,2)
+   sfx(2,1)
 end
 
 function createAsteroid()
@@ -381,6 +381,9 @@ function createAsteroid()
 end
 
 function _init()
+   menu = true
+   menuTransition = 0
+   
    --clean memory
    memset(0x4300, 0, 0x1b00)
 
@@ -389,11 +392,13 @@ function _init()
    mx = stat(32)
    my = stat(33)
    mb = stat(34)
+   botButtonPressed = false
 
    --setup data structs
    particles = {}
    botSpawnPoints = {}
    destroyedPoints = {}
+   firePixels = {}
    shipPoints = getStruct()
    stars = createStars()
 
@@ -557,10 +562,10 @@ function updateBots()
 
 			--increase hp bar relative to color repaired
 			hp += colValue[pointC]
-         score += 1
-         if (stat(19) == -1) then
-			   sfx(3,3)
-         end
+			score += 1
+			if (stat(19) == -1) then
+			   sfx(3,1)
+			end
 			updateHp()
 		 end
 	  end
@@ -580,6 +585,7 @@ function updateFires()
             local point_s = getSFromPoint(point[1], point[2])
 
             if d and point_s == 1 and point_c == 7 then
+			   add(firePixels, {point[1], point[2]})
 
                setSFromPoint(point[1], point[2], 0)
                createParticle(point[1], point[2], 8)
@@ -639,7 +645,7 @@ function updateAsteroid()
 			pretty_rect.size = 2
 			pretty_rect.ang_delta = (rnd(100)-50)/1000
             del(asteroids, a)
-			sfx(1,2)
+			sfx(1,1)
 
             break
          end
@@ -680,7 +686,7 @@ function superHeal()
 end
 
 
-function _update60()
+function updategame ()
    --mouse
    mx = stat(32)
    my = stat(33)
@@ -699,36 +705,57 @@ function _update60()
    updateParticles()
    updateStars()
    if (not selfdestruct) createBoosterParticles()
-   updateBots()
-   updateFires()
+   if not gameover then
+	  updateBots()
+	  updateFires()
+	  if botButtonPressed == false then
+		 if (btn(4)) botButtonPressed = true
+		 if botButtonPressed == true then
+			createBots()
+		 end
+	  else
+		 botButtonPressed = false
+		 if (btn(4)) botButtonPressed = true
+	  end
 
-   if (btnp(4) and not selfdestruct and not destroyed) createBots()
+	  if (laserone != nil) updateLaserone()
+	  if t%160==0 and rnd(100)<10 then
+		 if(laserone == nil) createLaserone()
+	  end
+	  if  t % 150 == 0 and not selfdestruct then
+		 createAsteroid()
+	  end
+	  if t % 800 == 0 and not selfdestruct then
+		 createFire()
+	  end
+	  updateAsteroid()
+   end
    if (btnp(0)) cycleBots(0)
    if (btnp(1)) cycleBots(1) 
    if (btnp(3)) createLaserone()
-
    if selfdestruct and sdspeed < 2500 then selfDestruct() end
-
-
-   if (laserone != nil) updateLaserone()
-
-
-   if t%300==0 and rnd(100)<10 then
-	  if(laserone == nil) createLaserone()
-   end
-
-
-   if  t % 150 == 0 and not selfdestruct then
-      createAsteroid()
-   end
-
-   if t % 800 == 0 and not selfdestruct then
-      createFire()
-   end
-
-   updateAsteroid()
    if hp <= 0 then
       selfdestruct = true
+   end
+end
+
+
+function updatemenu ()
+   updateStars()
+   if btnp(5) then
+	  menu = false
+   end
+   if menu==false then
+	  menuTransition += 1
+   end
+end
+
+
+function _update60()
+   if menu or menuTransition<60 then
+	  updatemenu()
+   else
+	  updategame()
    end
 
    superHeal()
@@ -774,7 +801,13 @@ function drawLaserone()
 end
 
 function drawHpBar()
-   rectfill(0, 0, (hp/maxhp)*128, 4, 13)
+   local col = 11
+   if (hp/maxhp)<0.3 then
+	  col = 8
+   elseif (hp/maxhp)<0.6 then
+	  col = 9
+   end
+   rectfill(0, 0, (hp/maxhp)*128, 4, col)
    print(hp .. "/" .. maxhp, 49, 0, 7)
 
    --superheadl bar
@@ -828,8 +861,7 @@ function drawPrettyRect()
    end
 end
 
-
-function _draw()
+function drawgame()
    cls(shake.x%3)
 
    --draw layers
@@ -843,6 +875,14 @@ function _draw()
 	  end
    end
    drawParticles()
+
+   if not selfdestruct and not gameover then
+	  for f in all(firePixels) do
+		 pset(f[1], f[2], rnd(2)+8)
+	  end
+   end
+
+
    for b in all(bots) do
 	  if b.path != nil then
 		 for p in all(b.path) do
@@ -879,11 +919,16 @@ function _draw()
 	  print(val, 61, 122, 0)
    end
 
-   local s = ""..score
-   print(s, 65-#s*2, 112, 7)
 
    if superheal.a > 0 and superheal.a < 100 and superheal.a % 5 != 0 then
       print("SUPERHEAL READY! PRESS ❎", 16, 7, 11)
+   end
+   if not gameover then
+	  local s = ""..score
+	  print(s, 53-#s*2, 62, botCol + 1)
+   else
+	  local s = ""..score
+	  print(s, 64-#s*2, 68, 8)
    end
 
 
@@ -895,6 +940,28 @@ function _draw()
 	  print("cose :".. #particles , 0, 24, 8)
    end
 
+end
+function drawmenu()
+
+   if menu then
+	  cls()
+   end
+
+   print("hULL bREACH", 64+1-11*2, 32+1, 13)
+   print("hULL bREACH", 64-11*2, 32, 6)
+   print("pRESS ❎ TO START", 64+1-17*2, 96+1, 13)
+   print("pRESS ❎ TO START", 64-17*2,   96, 6)
+   print("mADE FOR THE gLOBALgAMEjAM2020", 64+1-30*2, 120+1, 13)
+   print("mADE FOR THE gLOBALgAMEjAM2020", 64  -30*2, 120, 6)
+   drawStars()
+end
+
+function _draw()
+	if menu or menuTransition<60 then
+	   drawmenu()
+	else
+	   drawgame()
+	end
 end
 
 
