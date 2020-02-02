@@ -324,11 +324,24 @@ function createBots()
    end
 end
 
+
+
 function createFire()
-   source = {x = flr(rnd(128)), y = flr(rnd(128)), growth = 0}
+   local source = {x = flr(rnd(128)), y = flr(rnd(128)), growth = 0}
    local point_c = getColFromPoint(source.x, source.y)
+
+   local i = 0
+   while i<100 and point_c != 7 do
+	  source = {x = flr(rnd(128)), y = flr(rnd(128)), growth = 0}
+	  point_c = getColFromPoint(source.x, source.y)
+   end
+
    if (point_c == 7) then
-      setSFromPoint(source.x, source.y, 0)
+	  setSFromPoint(source.x, source.y, 0)
+	  local point_c = getColFromPoint(source.x, source.y)
+	  add(destroyedPoints, {source.x, source.y, 0, point_c, point_b})
+	  createParticle(source.x, source.y, point_c)
+	  updateHp()
       add(fires, source)
    end
 end
@@ -548,8 +561,12 @@ function updateFires()
             local point_s = getSFromPoint(point[1], point[2])
 
             if d and point_s == 1 and point_c == 7 then
+
                setSFromPoint(point[1], point[2], 0)
                createParticle(point[1], point[2], 8)
+			   local point_b = getBFromPoint(point[1], point[2])
+			   add(destroyedPoints, {point[1], point[2], 0, point_c, point_b})
+			   
                updateHp()
             end
          end
@@ -1011,14 +1028,6 @@ end
 
 -- find all existing neighbours of a position that are not walls
 debugCounter = 0
-function getNeighbours(pos)
-   --printh("find neighbours for " .. pos[1] .. "," .. pos[2] )
-   local neighbours={}
-   local x = pos[1]
-   local y = pos[2]
-
-   return neighbours
-end
 
 -- insert into start of table
 function insert(t, val)
