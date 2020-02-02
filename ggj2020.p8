@@ -360,7 +360,7 @@ function createLaserone()
    laserone.angle = atan2(128 - 0, laserone.ty  - laserone.sy)
    laserone.ex = laserone.sx
    laserone.ey = laserone.sy
-   sfx(2,2)
+   sfx(2,1)
 end
 
 function createAsteroid()
@@ -552,7 +552,7 @@ function updateBots()
 
 			--increase hp bar relative to color repaired
 			hp += colValue[pointC]
-			sfx(3,3)
+			sfx(3,1)
 			updateHp()
 		 end
 	  end
@@ -629,7 +629,7 @@ function updateAsteroid()
 			pretty_rect.size = 2
 			pretty_rect.ang_delta = (rnd(100)-50)/1000
             del(asteroids, a)
-			sfx(1,2)
+			sfx(1,1)
 
             break
          end
