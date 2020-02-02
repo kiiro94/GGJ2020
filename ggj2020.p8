@@ -433,7 +433,7 @@ function _init()
    colValue[5]  = 0
    colValue[6]  = 2
    colValue[7]  = 1
-   colValue[8]  = 13
+   colValue[8]  = 10
    colValue[9]  = 7
    colValue[10] = 0
    colValue[11] = 0
@@ -468,9 +468,9 @@ function updateHp()
    end
 
    if hp>maxhp*0.3 and (maxhp-sum) <= maxhp*0.3 then
-	  sfx(0, 1)		
+	  sfx(0, 2)		
    elseif hp<maxhp*0.3 and (maxhp-sum) >= maxhp*0.3 then
-	  sfx(-2, 1)
+	  sfx(-2, 2)
    end
 
    hp = maxhp - sum
@@ -556,7 +556,10 @@ function updateBots()
 
 			--increase hp bar relative to color repaired
 			hp += colValue[pointC]
-			sfx(3,3)
+         score += 1
+         if (stat(19) == -1) then
+			   sfx(3,3)
+         end
 			updateHp()
 		 end
 	  end
@@ -605,7 +608,9 @@ function updateLaserone()
 			local point_c = getColFromPoint(x, y)
 			createParticle(x, y, point_c)
 			local point_b = getBFromPoint(x, y)
-			add(destroyedPoints, {x, y, 0, point_c, point_b})
+         if (point_b == 0) then
+			   add(destroyedPoints, {x, y, 0, point_c, point_b})
+         end
 			updateHp()
 		 end
 	  end
@@ -652,9 +657,7 @@ function _update60()
 
    --time variable
    t += 1
-   if not gameover then
-	  score += 1
-   else
+   if gameover then
       music(-1, 250)
    end
 
@@ -665,7 +668,7 @@ function _update60()
    updateBots()
    updateFires()
 
-   if (btnp(4)) createBots()
+   if (btnp(4) and not selfdestruct and not destroyed) createBots()
    if (btnp(0)) cycleBots(0)
    if (btnp(1)) cycleBots(1) 
    if (btnp(3)) createLaserone()
@@ -676,17 +679,13 @@ function _update60()
    if (laserone != nil) updateLaserone()
 
 
-   if t%60==0 and rnd(100)<10 then
+   if t%160==0 and rnd(100)<10 then
 	  if(laserone == nil) createLaserone()
    end
 
 
    if  t % 150 == 0 and not selfdestruct then
       createAsteroid()
-   end
-
-   if t % 1200 == 0 and not selfdestruct then
-      createLaserone()
    end
 
    if t % 800 == 0 and not selfdestruct then
@@ -1324,10 +1323,10 @@ __music__
 00 18161744
 00 18151744
 00 181a1744
-00 1c1b1d23
-00 1c1f1d24
-00 1c1b1d25
-00 1c1f1d26
+00 1c1b1d63
+00 1c1f1d64
+00 1c1b1d65
+00 1c1f1d66
 00 1c1b1d63
 00 1c1f1d64
 00 1c1b1d65
