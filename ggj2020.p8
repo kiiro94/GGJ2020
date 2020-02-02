@@ -421,6 +421,7 @@ function _init()
    gameover = false
    goan = 0
    score = 0
+   superheal = {loading = 0, active = 0, dp = nil, a = 0}
 
    --pretty stuff
    pretty_rect = {x=64,y=64,size=128, targ_size=128, ang=0, ang_delta=0.01}
@@ -646,6 +647,39 @@ function updateAsteroid()
    end
 end
 
+function superHeal()
+   if superheal.loading >= 128 and btnp(5) then
+      superheal.loading = 0
+      superheal.active = 1
+      superheal.a = 0
+      superheal.dp = destroyedPoints
+   end
+
+   if superheal.active == 1 then
+      if #superheal.dp > 0 then
+         --reset the point status
+         setSFromPoint(superheal.dp[1][1], superheal.dp[1][2], 1)
+         for p in all(destroyedPoints) do
+            if p[1] == superheal.dp[1][1] and p[2] == superheal.dp[1][2] then
+               del(destroyedPoints, p)
+               del(superheal.dp[1])
+               createParticle(p[1], p[2], p[3])
+               break
+            end
+         end
+      else
+         superheal.active = 0
+      end
+   else
+      if superheal.loading < 128 then
+         superheal.loading += 0.07
+      else
+         superheal.a += 1
+      end
+   end
+end
+
+
 function _update60()
    --mouse
    mx = stat(32)
@@ -679,7 +713,7 @@ function _update60()
    if (laserone != nil) updateLaserone()
 
 
-   if t%160==0 and rnd(100)<10 then
+   if t%300==0 and rnd(100)<10 then
 	  if(laserone == nil) createLaserone()
    end
 
@@ -696,6 +730,8 @@ function _update60()
    if hp <= 0 then
       selfdestruct = true
    end
+
+   superHeal()
 end
 
 
@@ -740,6 +776,13 @@ end
 function drawHpBar()
    rectfill(0, 0, (hp/maxhp)*128, 4, 13)
    print(hp .. "/" .. maxhp, 49, 0, 7)
+
+   --superheadl bar
+   local c = 8
+   if superheal.loading >= 128 then
+      c = 11
+   end
+   line(0, 6, superheal.loading, 6, c)
 end
 
 function drawAsteroid()
@@ -838,6 +881,10 @@ function _draw()
 
    local s = ""..score
    print(s, 65-#s*2, 112, 7)
+
+   if superheal.a > 0 and superheal.a < 100 and superheal.a % 5 != 0 then
+      print("SUPERHEAL READY! PRESS ❎", 16, 7, 11)
+   end
 
 
    --debug
