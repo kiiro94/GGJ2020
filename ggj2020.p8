@@ -733,7 +733,13 @@ function drawLaserone()
 end
 
 function drawHpBar()
-   rectfill(0, 0, (hp/maxhp)*128, 4, 13)
+   local col = 11
+   if (hp/maxhp)<0.3 then
+	  col = 8
+   elseif (hp/maxhp)<0.6 then
+	  col = 9
+   end
+   rectfill(0, 0, (hp/maxhp)*128, 4, col)
    print(hp .. "/" .. maxhp, 49, 0, 7)
 end
 
